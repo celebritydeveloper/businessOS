@@ -1,0 +1,31 @@
+<svg xmlns="http://w3.org" viewBox="0 0 36 36" fill="none">
+  <defs>
+    <linearGradient id="bosGrad" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0F4EF0" />
+      <stop offset="100%" stop-color="#08277D" />
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded app tile background -->
+  <rect width="36" height="36" rx="9" fill="url(#bosGrad)" />
+
+  <!-- Top-left core OS block -->
+  <rect x="6.5" y="6.5" width="9.5" height="9.5" rx="2.4" fill="#FFFFFF" />
+
+  <!-- Bottom-left module block -->
+  <rect x="6.5" y="20" width="9.5" height="9.5" rx="2.4" fill="#FFFFFF" fill-opacity="0.85" />
+
+  <!-- Bottom-right module block -->
+  <rect x="20" y="20" width="9.5" height="9.5" rx="2.4" fill="#FFFFFF" />
+
+  <!-- Top-right active industry expansion diamond -->
+  <rect
+    x="24.75"
+    y="5.6"
+    width="7.8"
+    height="7.8"
+    rx="2"
+    transform="rotate(45 24.75 5.6)"
+    fill="#34D399"
+  />
+</svg>
