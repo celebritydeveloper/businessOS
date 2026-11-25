@@ -75,6 +75,7 @@ $app->group('/api/v1', function (RouteCollectorProxy $api): void {
         $auth->post('/onboarding/business', [OnboardingController::class, 'createInitialBusiness']);
         $auth->post('/billing/initialize', [BillingController::class, 'initializeCheckout']);
         $auth->get('/billing/verify', [BillingController::class, 'verifyCallback']);
+        $auth->get('/billing/overview', [BillingController::class, 'overview']);
     })->add(JwtAuthMiddleware::class);
 
     $api->group('/workspace', function (RouteCollectorProxy $ws): void {

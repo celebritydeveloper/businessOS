@@ -47,7 +47,7 @@ return static function (): Container {
 
     $container->set(FlutterwaveGateway::class, static fn(): FlutterwaveGateway => new FlutterwaveGateway(
         (string) ($_ENV['FLUTTERWAVE_SECRET_KEY'] ?? ''),
-        (string) ($_ENV['FLUTTERWAVE_WEBHOOK_HASH'] ?? '')
+        //(string) ($_ENV['FLUTTERWAVE_WEBHOOK_HASH'] ?? '')
     ));
 
     $container->set(JwtAuthMiddleware::class, static fn(Container $c): JwtAuthMiddleware => new JwtAuthMiddleware($c->get(SessionAuthService::class)));
@@ -81,6 +81,10 @@ return static function (): Container {
         $c->get(PDO::class),
         $c->get(PlanQuotaService::class),
         $c->get(AuditLogger::class)
+    ));
+
+    $container->set(InventoryLedgerService::class, static fn(Container $c): InventoryLedgerService => new InventoryLedgerService(
+        $c->get(PDO::class)
     ));
 
 

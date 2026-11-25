@@ -1,4 +1,4 @@
-import type { Subscription, SubscriptionPlan } from '../../core/types';
+import type { PlanLimits, Subscription, SubscriptionPlan } from '../../core/types';
 
 
 export interface PlansApiResponse {
@@ -59,14 +59,42 @@ export interface BillingInvoice {
   created_at: string;
 }
 
+export interface BillingSubscriptionDetail extends Subscription {
+  plan_name?: string;
+  price_monthly?: number;
+  price_yearly?: number;
+  currency?: string;
+  gateway?: string | null;
+  limits?: PlanLimits;
+}
+
 export interface BillingOverviewResponse {
-  subscription: (Subscription & {
-    plan_name?: string;
-    price_monthly?: number;
-    price_yearly?: number;
-    currency?: string;
-    gateway?: string | null;
-  }) | null;
+  subscription: BillingSubscriptionDetail | null;
   payment_method: SavedPaymentMethod | null;
+  invoices: BillingInvoice[];
+}
+
+
+export interface PlanCardProps {
+  plan: SubscriptionPlan;
+  cycle: BillingCycle;
+  currentSubscription: Subscription | null;
+  processingSlug: string | null;
+  onSelectPlan: (planSlug: string) => void;
+}
+
+export interface CurrentPlanBannerProps {
+  subscription: BillingSubscriptionDetail | null;
+}
+
+export interface PaymentMethodCardProps {
+  paymentMethod: SavedPaymentMethod | null;
+}
+
+export interface PlanQuotasCardProps {
+  limits?: PlanLimits;
+}
+
+export interface InvoiceHistoryTableProps {
   invoices: BillingInvoice[];
 }

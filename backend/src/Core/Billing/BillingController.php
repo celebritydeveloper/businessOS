@@ -54,9 +54,11 @@ final class BillingController {
             return JsonResponder::error($response, 'Invalid payment gateway. Choose paystack or flutterwave.', 'INVALID_GATEWAY', 422);
         }
 
-        $accStmt = $this->pdo->prepare("SELECT email FROM accounts WHERE id = :aid LIMIT 1");
+        $accStmt = $this->pdo->prepare("SELECT email, owner_name FROM accounts WHERE id = :aid LIMIT 1");
         $accStmt->execute([':aid' => $accountId]);
-        $email = (string) $accStmt->fetchColumn();
+        $account = $accStmt->fetch();
+        $email = (string) ($account['email'] ?? '');
+
         $planStmt = $this->pdo->prepare("SELECT * FROM plans WHERE slug = :slug AND is_active = 1 LIMIT 1");
         $planStmt->execute([':slug' => $planSlug]);
         $plan = $planStmt->fetch();
@@ -65,8 +67,12 @@ final class BillingController {
             return JsonResponder::error($response, 'Selected plan not found.', 'PLAN_NOT_FOUND', 404);
         }
 
+        $planCol = "{$gatewayName}_{$cycle}_plan_" . ($gatewayName === 'paystack' ? 'code' : 'id');
+        $gatewayPlanId = trim((string) ($plan[$planCol] ?? ''));
+
         $amount = $cycle === 'yearly' ? (float) $plan['price_yearly'] : (float) $plan['price_monthly'];
         $reference = 'BOS-' . strtoupper(bin2hex(random_bytes(8)));
+
         $subStmt = $this->pdo->prepare("SELECT id FROM subscriptions WHERE account_id = :aid ORDER BY created_at DESC LIMIT 1");
         $subStmt->execute([':aid' => $accountId]);
         $subscriptionId = (string) $subStmt->fetchColumn();
@@ -85,10 +91,21 @@ final class BillingController {
             ]);
         }
 
+        $initialMeta = [
+            'account_id'      => $accountId,
+            'subscription_id' => $subscriptionId,
+            'plan_id'         => $plan['id'],
+            'plan_slug'       => $plan['slug'],
+            'billing_cycle'   => $cycle,
+            'gateway_plan_id' => $gatewayPlanId,
+            'currency'        => (string) ($plan['currency'] ?? 'NGN'),
+            'customer_name'   => (string) ($account['owner_name'] ?? 'BusinessOS Merchant'),
+        ];
+
         $txId = Uuid::uuid4()->toString();
         $this->pdo->prepare("
-            INSERT INTO payment_transactions (id, account_id, subscription_id, gateway, reference, amount, currency, status)
-            VALUES (:id, :aid, :sid, :gw, :ref, :amt, :curr, 'pending')
+            INSERT INTO payment_transactions (id, account_id, subscription_id, gateway, reference, amount, currency, status, raw_payload_json)
+            VALUES (:id, :aid, :sid, :gw, :ref, :amt, :curr, 'pending', :raw)
         ")->execute([
             ':id'   => $txId,
             ':aid'  => $accountId,
@@ -97,16 +114,12 @@ final class BillingController {
             ':ref'  => $reference,
             ':amt'  => $amount,
             ':curr' => $plan['currency'],
+            ':raw'  => json_encode($initialMeta),
         ]);
 
         try {
             $gateway = $this->resolveGateway($gatewayName);
-            $checkout = $gateway->initialize($email, $amount, $reference, $callbackUrl, [
-                'account_id'      => $accountId,
-                'subscription_id' => $subscriptionId,
-                'plan_id'         => $plan['id'],
-                'billing_cycle'   => $cycle,
-            ]);
+            $checkout = $gateway->initialize($email, $amount, $reference, $callbackUrl, $initialMeta);
 
             $this->audit->log($accountId, 'billing.checkout_initialized', $userId, null, null, 'payment', $txId, null, [
                 'gateway'   => $gatewayName,
@@ -120,37 +133,86 @@ final class BillingController {
         }
     }
 
-    public function verifyCallback(Request $request, Response $response): Response {
-        $accountId = (string) $request->getAttribute('auth_account_id');
+
+    public function verifyCallback(Request $request, Response $response): Response  {
         $params = $request->getQueryParams();
         $reference = trim((string) ($params['reference'] ?? $params['tx_ref'] ?? ''));
 
         if ($reference === '') {
-            return JsonResponder::error($response, 'Transaction reference is required.', 'MISSING_REFERENCE', 422);
+            return JsonResponder::error($response, 'Missing payment reference.', 'MISSING_REFERENCE', 422);
         }
 
-        $txStmt = $this->pdo->prepare("SELECT * FROM payment_transactions WHERE reference = :ref AND account_id = :aid LIMIT 1");
-        $txStmt->execute([':ref' => $reference, ':aid' => $accountId]);
+        $txStmt = $this->pdo->prepare("SELECT * FROM payment_transactions WHERE reference = :ref LIMIT 1");
+        $txStmt->execute([':ref' => $reference]);
         $tx = $txStmt->fetch();
 
         if (!$tx) {
-            return JsonResponder::error($response, 'Transaction not found.', 'TX_NOT_FOUND', 404);
+            return JsonResponder::error($response, 'Transaction reference not found.', 'NOT_FOUND', 404);
         }
 
+        // Idempotent guard: already verified
         if ($tx['status'] === 'success') {
-            return JsonResponder::success($response, ['verified' => true, 'status' => 'active']);
+            return JsonResponder::success($response, ['verified' => true, 'status' => 'success']);
         }
 
-        $gateway = $this->resolveGateway((string) $tx['gateway']);
+        $gatewayName = (string) $tx['gateway'];
+        $gateway = $gatewayName === 'flutterwave' ? $this->flutterwave : $this->paystack;
         $result = $gateway->verify($reference);
 
-        if (!$result['paid'] || $result['amount'] < (float) $tx['amount']) {
-            return JsonResponder::error($response, 'Payment has not been confirmed yet.', 'PAYMENT_UNVERIFIED', 402);
+        $rawJson = json_encode($result['raw_payload'] ?? []);
+
+        if (empty($result['verified'])) {
+            $this->pdo->prepare("
+                UPDATE payment_transactions
+                SET status = 'failed', raw_payload_json = :raw
+                WHERE id = :id
+            ")->execute([':raw' => $rawJson, ':id' => $tx['id']]);
+
+            return JsonResponder::success($response, ['verified' => false, 'status' => 'failed']);
         }
 
-        $this->activatePaidTransaction($tx, (string) $result['gateway_id'], $result['raw']);
-        return JsonResponder::success($response, ['verified' => true, 'status' => 'active']);
+        $meta = json_decode((string) ($tx['raw_payload_json'] ?? '{}'), true) ?: [];
+        $planId = (string) ($meta['plan_id'] ?? '');
+        $cycle = (($meta['billing_cycle'] ?? 'monthly') === 'yearly') ? 'yearly' : 'monthly';
+        $periodDays = $cycle === 'yearly' ? 365 : 30;
+        $periodEnd = gmdate('Y-m-d H:i:s', time() + ($periodDays * 86400));
+
+        $this->pdo->beginTransaction();
+        try {
+            $this->pdo->prepare("
+                UPDATE payment_transactions
+                SET status = 'success', raw_payload_json = :raw, verified_at = UTC_TIMESTAMP()
+                WHERE id = :id
+            ")->execute([':raw' => $rawJson, ':id' => $tx['id']]);
+
+            $this->pdo->prepare("
+                UPDATE subscriptions
+                SET plan_id = COALESCE(NULLIF(:pid, ''), plan_id),
+                    billing_cycle = :cycle,
+                    gateway = :gw,
+                    status = 'active',
+                    trial_ends_at = NULL,
+                    current_period_start = UTC_TIMESTAMP(),
+                    current_period_end = :pend,
+                    grace_until = NULL
+                WHERE account_id = :aid
+            ")->execute([
+                ':pid'   => $planId,
+                ':cycle' => $cycle,
+                ':gw'    => $gatewayName,
+                ':pend'  => $periodEnd,
+                ':aid'   => $tx['account_id'],
+            ]);
+
+            $this->pdo->commit();
+        } catch (Throwable $e) {
+            $this->pdo->rollBack();
+            throw $e;
+        }
+
+        return JsonResponder::success($response, ['verified' => true, 'status' => 'success']);
     }
+
 
     public function handleWebhook(Request $request, Response $response, array $args): Response  {
         $gatewayName = strtolower((string) ($args['gateway'] ?? ''));
@@ -193,7 +255,7 @@ final class BillingController {
 
         $subStmt = $this->pdo->prepare("
             SELECT s.id, s.status, s.billing_cycle, s.trial_ends_at, s.current_period_end, s.grace_until, s.gateway,
-                   p.name AS plan_name, p.slug AS plan_slug, p.price_monthly, p.price_yearly, p.currency
+                   p.name AS plan_name, p.slug AS plan_slug, p.price_monthly, p.price_yearly, p.currency, p.limits_json
             FROM subscriptions s
             INNER JOIN plans p ON p.id = s.plan_id
             WHERE s.account_id = :aid
@@ -201,6 +263,11 @@ final class BillingController {
         ");
         $subStmt->execute([':aid' => $accountId]);
         $subscription = $subStmt->fetch() ?: null;
+
+        if ($subscription) {
+            $subscription['limits'] = json_decode((string) ($subscription['limits_json'] ?? '{}'), true) ?: [];
+            unset($subscription['limits_json']);
+        }
 
         $txStmt = $this->pdo->prepare("
             SELECT id, gateway, reference, amount, currency, status, raw_payload_json, verified_at, created_at
@@ -220,12 +287,18 @@ final class BillingController {
             if ($paymentMethod === null && $row['status'] === 'success') {
                 $auth = $raw['data']['authorization'] ?? $raw['data']['card'] ?? null;
                 if (is_array($auth)) {
+                    $expMonth = (string) ($auth['exp_month'] ?? '');
+                    $expYear = (string) ($auth['exp_year'] ?? '');
+                    if ($expMonth === '' && !empty($auth['expiry']) && str_contains((string) $auth['expiry'], '/')) {
+                        [$expMonth, $expYear] = explode('/', (string) $auth['expiry'], 2);
+                    }
+
                     $paymentMethod = [
                         'gateway'   => $row['gateway'],
                         'brand'     => strtoupper((string) ($auth['brand'] ?? $auth['card_type'] ?? $auth['type'] ?? 'CARD')),
                         'last4'     => (string) ($auth['last4'] ?? $auth['last_4digits'] ?? '****'),
-                        'exp_month' => (string) ($auth['exp_month'] ?? ''),
-                        'exp_year'  => (string) ($auth['exp_year'] ?? ''),
+                        'exp_month' => $expMonth,
+                        'exp_year'  => $expYear,
                         'bank'      => (string) ($auth['bank'] ?? $auth['issuer'] ?? ''),
                     ];
                 }
@@ -249,6 +322,7 @@ final class BillingController {
             'invoices'       => $invoices,
         ]);
     }
+
 
 
     private function activatePaidTransaction(array $tx, string $gatewayTxId, array $rawPayload): void {

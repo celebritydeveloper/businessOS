@@ -9,6 +9,13 @@ final class PaystackGateway implements PaymentGatewayInterface {
     public function __construct(private string $secretKey) {}
 
     public function initialize(string $email, float $amountNgn, string $reference, string $callbackUrl, array $metadata = []): array {
+
+        $gatewayPlanCode = trim((string) ($metadata['gateway_plan_id'] ?? ''));
+        if ($gatewayPlanCode !== '') {
+            $payload['plan'] = $gatewayPlanCode;
+        }
+
+        
         $payload = json_encode([
             'email'        => $email,
             'amount'       => (int) round($amountNgn * 100), // kobo
@@ -65,7 +72,22 @@ final class PaystackGateway implements PaymentGatewayInterface {
         }
         curl_setopt_array($ch, $opts);
         $raw = curl_exec($ch);
-        curl_close($ch);
+        $curlErr = curl_error($ch);
+        $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $redirectUrl = (string) curl_getinfo($ch, CURLINFO_REDIRECT_URL);
+
+        if ($raw === false) {
+            throw new RuntimeException('Flutterwave connection error: ' . $curlErr);
+        }
+
+        $data = json_decode($raw, true);
+        if ($httpCode >= 400 || $httpCode === 301 || $httpCode === 302 || ($data['status'] ?? '') !== 'success') {
+            $detail = is_array($data)
+                ? json_encode($data['errors'] ?? $data['message'] ?? $data)
+                : ($redirectUrl !== '' ? "Redirected to {$redirectUrl}" : substr(trim($raw), 0, 250));
+
+            throw new RuntimeException("Flutterwave error ({$httpCode}): {$detail}");
+        }
 
         return is_string($raw) ? (json_decode($raw, true) ?: []) : [];
     }

@@ -9,6 +9,8 @@ import { WorkspaceLayout } from './shared/layouts/WorkspaceLayout';
 import { ToastProvider } from './shared/ui/ToastProvider';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { PlanCheckoutPage } from './pages/billing/PlanCheckoutPage';
+import { BillingCallbackPage } from './pages/billing/BillingCallbackPage';
+import { BillingManagementPage } from './pages/billing/BillingManagementPage';
 
 function ComingSoonSection({ title }: { title: string }) {
   return (
@@ -43,6 +45,9 @@ function AppRoutes() {
         element={!me ? <Navigate to="/auth/login" replace /> : hasBusiness ? <Navigate to="/dashboard" replace /> : <OnboardingPage />}
       />
 
+      <Route path="/billing" element={me ? <PlanCheckoutPage /> : <Navigate to="/auth/login" replace />} />
+      <Route path="/billing/callback" element={<BillingCallbackPage />} />
+
       <Route
         path="/dashboard"
         element={!me ? <Navigate to="/auth/login" replace /> : !hasBusiness ? <Navigate to="/onboarding" replace /> : <WorkspaceLayout />}
@@ -54,9 +59,8 @@ function AppRoutes() {
         <Route path="batches" element={<ComingSoonSection title="Pharmacy Batch & Expiry" />} />
         <Route path="staff" element={<ComingSoonSection title="Staff & PINs" />} />
         <Route path="audit" element={<ComingSoonSection title="Activity Logs" />} />
-        <Route path="billing" element={<ComingSoonSection title="Billing & Subscription" />} />
+        <Route path="billing" element={<BillingManagementPage />} />
         <Route path="settings" element={<SettingsPage />} />
-        <Route path="/billing" element={me ? <PlanCheckoutPage /> : <Navigate to="/auth/login" replace />} />
         <Route path="/dashboard/*" element={<Navigate to="/billing" replace />} />
       </Route>
 
