@@ -1,33 +1,41 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useSearchParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './core/auth/AuthContext';
+import { AcceptInvitePage } from './pages/auth/AcceptInvitePage';
 import { LoginPage } from './pages/auth/LoginPage';
 import { RegisterPage } from './pages/auth/RegisterPage';
 import { VerifyEmailPage } from './pages/auth/VerifyEmailPage';
-import { DashboardHomePage } from './pages/dashboard/DashboardHomePage';
-import { OnboardingPage } from './pages/onboarding/OnboardingPage';
-import { WorkspaceLayout } from './shared/layouts/WorkspaceLayout';
-import { ToastProvider } from './shared/ui/ToastProvider';
-import { SettingsPage } from './pages/settings/SettingsPage';
-import { PlanCheckoutPage } from './pages/billing/PlanCheckoutPage';
+import { AccountingPage } from './pages/accounting/AccountingPage';
+import { FarmCyclesPage } from './pages/agriculture/FarmCyclesPage';
 import { BillingCallbackPage } from './pages/billing/BillingCallbackPage';
 import { BillingManagementPage } from './pages/billing/BillingManagementPage';
-import { CatalogPage } from './pages/catalog/CatalogPage';
+import { PlanCheckoutPage } from './pages/billing/PlanCheckoutPage';
 import { BatchExpiryPage } from './pages/catalog/BatchExpiryPage';
+import { CatalogPage } from './pages/catalog/CatalogPage';
 import { StockTransfersPage } from './pages/catalog/StockTransfersPage';
+import { DashboardHomePage } from './pages/dashboard/DashboardHomePage';
+import { OnboardingPage } from './pages/onboarding/OnboardingPage';
 import { PosTerminalPage } from './pages/pos/PosTerminalPage';
 import { SalesHistoryPage } from './pages/pos/SalesHistoryPage';
-import { StaffManagementPage } from './pages/staff/StaffManagementPage';
+import { SettingsPage } from './pages/settings/SettingsPage';
 import { ActivityLogsPage } from './pages/staff/ActivityLogsPage';
-import { AcceptInvitePage } from './pages/auth/AcceptInvitePage';
-import { AccountingPage } from './pages/accounting/AccountingPage';
+import { StaffManagementPage } from './pages/staff/StaffManagementPage';
+import { WorkspaceLayout } from './shared/layouts/WorkspaceLayout';
+import { ToastProvider } from './shared/ui/ToastProvider';
 
-function ComingSoonSection({ title }: { title: string }) {
-  return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center">
-      <h2 className="text-lg font-bold text-slate-900">{title}</h2>
-      <p className="text-xs text-slate-500 mt-1">Module queued next in our build roadmap.</p>
-    </div>
-  );
+function OnboardingRouteGuard() {
+  const { me } = useAuth();
+  const [searchParams] = useSearchParams();
+
+  if (!me) return <Navigate to="/auth/login" replace />;
+
+  const hasBusiness = (me.businesses?.length ?? 0) > 0;
+  const isNewMode = searchParams.get('mode') === 'new' && Boolean(me.user.is_owner);
+
+  if (hasBusiness && !isNewMode) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <OnboardingPage />;
 }
 
 function AppRoutes() {
@@ -50,10 +58,7 @@ function AppRoutes() {
       <Route path="/auth/login" element={me ? <Navigate to={hasBusiness ? '/dashboard' : '/onboarding'} replace /> : <LoginPage />} />
       <Route path="/auth/accept-invite" element={<AcceptInvitePage />} />
 
-      <Route
-        path="/onboarding"
-        element={!me ? <Navigate to="/auth/login" replace /> : hasBusiness ? <Navigate to="/dashboard" replace /> : <OnboardingPage />}
-      />
+      <Route path="/onboarding" element={<OnboardingRouteGuard />} />
 
       <Route path="/billing" element={me ? <PlanCheckoutPage /> : <Navigate to="/auth/login" replace />} />
       <Route path="/billing/callback" element={<BillingCallbackPage />} />
@@ -68,15 +73,14 @@ function AppRoutes() {
         <Route path="catalog" element={<CatalogPage />} />
         <Route path="batches" element={<BatchExpiryPage />} />
         <Route path="transfers" element={<StockTransfersPage />} />
-        <Route path="sales" element={<ComingSoonSection title="Sales & Receipts" />} />
-        <Route path="batches" element={<ComingSoonSection title="Pharmacy Batch & Expiry" />} />
         <Route path="staff" element={<StaffManagementPage />} />
         <Route path="audit" element={<ActivityLogsPage />} />
         <Route path="accounting" element={<AccountingPage />} />
+        <Route path="farm-cycles" element={<FarmCyclesPage />} />
         <Route path="billing" element={<BillingManagementPage />} />
         <Route path="settings" element={<SettingsPage />} />
-        
-        <Route path="/dashboard/*" element={<Navigate to="/billing" replace />} />
+
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
 
       <Route path="*" element={<Navigate to={me ? (hasBusiness ? '/dashboard' : '/onboarding') : '/auth/login'} replace />} />

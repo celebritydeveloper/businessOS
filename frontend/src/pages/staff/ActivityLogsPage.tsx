@@ -12,10 +12,12 @@ export function ActivityLogsPage() {
   const loadLogs = useCallback(async () => {
     if (!activeBusiness?.id) return;
     setLoading(true);
+    setLogs([]);
     const res = await apiFetch<ActivityLogsResponse>(`/workspace/businesses/${activeBusiness.id}/audit-logs`);
     if (res.ok && res.body.data) setLogs(res.body.data.logs);
     setLoading(false);
   }, [activeBusiness?.id]);
+
 
   useEffect(() => {
     void loadLogs();
@@ -58,17 +60,13 @@ export function ActivityLogsPage() {
                     <td className="py-3 px-4 font-mono font-semibold text-slate-800 flex items-center gap-1.5">
                       <Activity className="w-3.5 h-3.5 text-brand-600" /> {log.action}
                     </td>
-                    <td className="py-3 px-4 text-slate-700">{log.actor_name || 'System'}</td>
-                    <td className="py-3 px-4">
-                      <span className="font-semibold text-slate-800">{log.actor_name || 'System'}</span>
-                      {log.actor_role && (
-                        <span className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">
-                          {log.actor_role}
-                        </span>
-                      )}
-                    </td>
-
+                    <td className="py-3 px-4 font-semibold text-slate-800">{log.actor_name || 'System'}</td>
                     <td className="py-3 px-4 text-slate-500">{log.branch_name || 'All Branches'}</td>
+                    <td className="py-3 px-4">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">
+                        {log.actor_role || 'Owner'}
+                      </span>
+                    </td>
                     <td className="py-3 px-4 font-mono text-slate-400">{log.ip_address || '—'}</td>
                     <td className="py-3 px-4 text-slate-500">{new Date(log.created_at).toLocaleString('en-NG')}</td>
                   </tr>

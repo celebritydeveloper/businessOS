@@ -1,4 +1,4 @@
-import type { RegistrationStatus, RegistrationType } from './tenancy';
+import type { IndustryType, RegistrationStatus, RegistrationType } from './tenancy';
 
 export interface RegisterPayload {
   owner_name: string;
@@ -26,7 +26,7 @@ export interface AuthTokenResponse {
 
 export interface OnboardingBusinessPayload {
   business_name: string;
-  industry_type: 'retail' | 'pharmacy';
+  industry_type: IndustryType;
   branch_name: string;
   branch_address?: string;
   branch_phone?: string;

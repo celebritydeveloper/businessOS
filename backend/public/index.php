@@ -17,8 +17,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
 }
 
 use App\Core\Accounting\AccountingController;
+use App\Core\Agriculture\AgricultureController;
 use App\Core\Auth\AuthController;
 use App\Core\Billing\BillingController;
+use App\Core\Contacts\ContactsController;
 use App\Core\Http\JsonResponder;
 use App\Core\Inventory\CatalogController;
 use App\Core\Inventory\StockTransferController;
@@ -97,6 +99,9 @@ $app->group('/api/v1', function (RouteCollectorProxy $api): void {
         $ws->get('/businesses/{businessId}/branches/{branchId}/overview', [DashboardController::class, 'getBranchOverview']);
         $ws->get('/businesses/{businessId}/branches/{branchId}/sales', [PosController::class, 'listSales']);
         $ws->post('/businesses/{businessId}/branches/{branchId}/sales', [PosController::class, 'recordSale']);
+        $ws->get('/businesses/{businessId}/branches/{branchId}/pos/cashiers', [PosController::class, 'listBranchCashiers']);
+        $ws->post('/businesses/{businessId}/branches/{branchId}/pos/switch-cashier', [PosController::class, 'switchCashierByPin']);
+        $ws->post('/businesses/{businessId}/branches/{branchId}/pos/reset-pin', [PosController::class, 'resetPinWithPassword']);
         $ws->post('/businesses/{businessId}/catalog', [CatalogController::class, 'createItem']);
         $ws->put('/businesses/{businessId}/catalog/{itemId}', [CatalogController::class, 'updateItem']);
         $ws->post('/businesses/{businessId}/branches/{branchId}/stock-movements', [CatalogController::class, 'recordStockMovement']);
@@ -108,10 +113,21 @@ $app->group('/api/v1', function (RouteCollectorProxy $api): void {
         $ws->post('/businesses/{businessId}/staff', [StaffController::class, 'createStaff']);
         $ws->get('/businesses/{businessId}/accounting', [AccountingController::class, 'getReports']);
         $ws->post('/businesses/{businessId}/accounting/expenses', [AccountingController::class, 'recordExpense']);
+        $ws->get('/businesses/{businessId}/branches/{branchId}/farm-cycles', [AgricultureController::class, 'listCycles']);
+        $ws->post('/businesses/{businessId}/branches/{branchId}/farm-cycles', [AgricultureController::class, 'createCycle']);
+        $ws->post('/businesses/{businessId}/branches/{branchId}/farm-cycles/{cycleId}/logs', [AgricultureController::class, 'recordCycleLog']);
+        $ws->get('/businesses/{businessId}/branches/{branchId}/farm-inputs', [AgricultureController::class, 'listInputs']);
+        $ws->post('/businesses/{businessId}/branches/{branchId}/farm-inputs', [AgricultureController::class, 'saveInput']);
         $ws->patch('/staff/{userId}/pin', [StaffController::class, 'updateStaffPin']);
         $ws->patch('/staff/{userId}/status', [StaffController::class, 'toggleStaffStatus']);
         $ws->post('/branches/{branchId}/verify-pin', [StaffController::class, 'verifyPosPin']);
         $ws->get('/businesses/{businessId}/audit-logs', [AuditLogController::class, 'listLogs']);
+        $ws->get('/businesses/{businessId}/customers', [ContactsController::class, 'listCustomers']);
+        $ws->post('/businesses/{businessId}/customers', [ContactsController::class, 'createCustomer']);
+        $ws->post('/businesses/{businessId}/customers/{customerId}/payments', [ContactsController::class, 'recordCustomerPayment']);
+        $ws->get('/businesses/{businessId}/suppliers', [ContactsController::class, 'listSuppliers']);
+        $ws->post('/businesses/{businessId}/suppliers', [ContactsController::class, 'createSupplier']);
+        $ws->post('/businesses/{businessId}/suppliers/{supplierId}/transactions', [ContactsController::class, 'recordSupplierActivity']);
     })->add(SubscriptionGuardMiddleware::class)->add(JwtAuthMiddleware::class);
 
     $api->get('/public/branding', [BrandingController::class, 'resolvePublicBranding']);

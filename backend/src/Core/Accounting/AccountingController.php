@@ -167,6 +167,7 @@ final class AccountingController {
         $vendorName = trim((string) ($body['vendor_name'] ?? ''));
         $description = trim((string) ($body['description'] ?? ''));
         $expenseDate = trim((string) ($body['expense_date'] ?? gmdate('Y-m-d')));
+        $farmCycleId = trim((string) ($body['farm_cycle_id'] ?? ''));
 
         if ($branchId === '' || $expenseCode === '' || $amount <= 0 || $description === '') {
             return JsonResponder::error($response, 'Branch, expense category, positive amount, and description are required.', 'VALIDATION_ERROR', 422);
@@ -179,11 +180,25 @@ final class AccountingController {
             return JsonResponder::error($response, 'Invalid expense ledger account.', 'INVALID_ACCOUNT', 422);
         }
 
+        $linkedCycle = null;
+        if ($farmCycleId !== '') {
+            $fcStmt = $this->pdo->prepare("SELECT id, name FROM farm_cycles WHERE id = :cid AND business_id = :bid AND branch_id = :brid AND status = 'active' LIMIT 1");
+            $fcStmt->execute([':cid' => $farmCycleId, ':bid' => $businessId, ':brid' => $branchId]);
+            $linkedCycle = $fcStmt->fetch();
+            if (!$linkedCycle) {
+                return JsonResponder::error($response, 'Selected farm cycle is not active in this branch.', 'INVALID_CYCLE', 422);
+            }
+        }
+
         $expenseId = \Ramsey\Uuid\Uuid::uuid4()->toString();
         $entryId = \Ramsey\Uuid\Uuid::uuid4()->toString();
         $postedAt = "{$expenseDate} " . gmdate('H:i:s');
         $vendorPrefix = $vendorName !== '' ? " [{$vendorName}]" : '';
-        $memo = "Expense ({$expenseAcc['name']}){$vendorPrefix}: {$description}";
+        $cycleSuffix = $linkedCycle ? " [Cycle: {$linkedCycle['name']}]" : '';
+        $memo = "Expense ({$expenseAcc['name']}){$vendorPrefix}{$cycleSuffix}: {$description}";
+
+        // Capitalize cycle-linked expenses into Inventory/WIP (1200) so they hit COGS upon harvest without double-counting
+        $debitAccountCode = $linkedCycle ? '1200' : $expenseCode;
 
         $this->pdo->beginTransaction();
         try {
@@ -199,7 +214,7 @@ final class AccountingController {
                 ':ecode'  => $expenseCode,
                 ':pcode'  => $paymentCode,
                 ':vendor' => $vendorName !== '' ? substr($vendorName, 0, 150) : null,
-                ':desc'   => substr($description, 0, 255),
+                ':desc'   => substr($description . $cycleSuffix, 0, 255),
                 ':amt'    => $amount,
                 ':edate'  => $expenseDate,
                 ':uid'    => $userId,
@@ -218,8 +233,26 @@ final class AccountingController {
             ]);
 
             $lineStmt = $this->pdo->prepare("INSERT INTO journal_lines (id, journal_entry_id, account_code, debit, credit) VALUES (:id, :eid, :code, :dr, :cr)");
-            $lineStmt->execute([':id' => \Ramsey\Uuid\Uuid::uuid4()->toString(), ':eid' => $entryId, ':code' => $expenseCode, ':dr' => $amount, ':cr' => 0.0]);
+            $lineStmt->execute([':id' => \Ramsey\Uuid\Uuid::uuid4()->toString(), ':eid' => $entryId, ':code' => $debitAccountCode, ':dr' => $amount, ':cr' => 0.0]);
             $lineStmt->execute([':id' => \Ramsey\Uuid\Uuid::uuid4()->toString(), ':eid' => $entryId, ':code' => $paymentCode, ':dr' => 0.0, ':cr' => $amount]);
+
+            if ($linkedCycle) {
+                $this->pdo->prepare("UPDATE farm_cycles SET accumulated_cost = accumulated_cost + :amt WHERE id = :cid")
+                    ->execute([':amt' => $amount, ':cid' => $linkedCycle['id']]);
+
+                $this->pdo->prepare("
+                    INSERT INTO farm_cycle_logs (id, cycle_id, log_type, title, quantity, cost_amount, log_date, notes, actor_user_id)
+                    VALUES (:id, :cid, 'milestone', :title, 0, :cost, :ldate, :notes, :uid)
+                ")->execute([
+                    ':id'    => \Ramsey\Uuid\Uuid::uuid4()->toString(),
+                    ':cid'   => $linkedCycle['id'],
+                    ':title' => "Accounting Expense ({$expenseAcc['name']}): {$description}",
+                    ':cost'  => $amount,
+                    ':ldate' => $expenseDate,
+                    ':notes' => $vendorName !== '' ? "Vendor: {$vendorName}" : null,
+                    ':uid'   => $userId,
+                ]);
+            }
 
             $this->pdo->commit();
         } catch (\Throwable $e) {
@@ -227,7 +260,11 @@ final class AccountingController {
             return JsonResponder::error($response, $e->getMessage(), 'EXPENSE_ERROR', 422);
         }
 
-        $this->audit->log($accountId, 'accounting.expense_recorded', $userId, $businessId, $branchId, 'expense', $expenseId, null, ['amount' => $amount, 'account' => $expenseCode]);
+        $this->audit->log($accountId, 'accounting.expense_recorded', $userId, $businessId, $branchId, 'expense', $expenseId, null, [
+            'amount'        => $amount,
+            'account'       => $expenseCode,
+            'farm_cycle_id' => $farmCycleId ?: null,
+        ]);
         return JsonResponder::success($response, ['expense_id' => $expenseId, 'journal_entry_id' => $entryId], 201);
     }
 }

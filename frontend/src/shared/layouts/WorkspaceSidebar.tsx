@@ -12,6 +12,7 @@ import {
   Receipt,
   Settings,
   ShoppingCart,
+  Sprout,
   Users,
   X,
 } from 'lucide-react';
@@ -31,6 +32,8 @@ export function WorkspaceSidebar({
   const isOwner = Boolean(me?.user.is_owner);
   const branchPerms = activeBranch?.permissions || [];
   const can = (perm: string) => isOwner || branchPerms.includes('*') || branchPerms.includes(perm);
+  const caps = getIndustryCapabilities(activeBusiness?.industry_type);
+
 
   const capabilities = getIndustryCapabilities(activeBusiness?.industry_type);
   const hasMultipleBranches = (activeBusiness?.branches.length ?? 0) > 1;
@@ -41,6 +44,7 @@ export function WorkspaceSidebar({
     ...(can('catalog.manage') || can('inventory.restock') ? [{ id: 'catalog', label: 'Catalog & Stock', path: '/dashboard/catalog', icon: Package, section: 'core' as const }] : []),
     ...(hasMultipleBranches && can('transfers.manage') ? [{ id: 'transfers', label: 'Stock Transfers', path: '/dashboard/transfers', icon: ArrowLeftRight, section: 'core' as const }] : []),
     ...(can('sales.view') ? [{ id: 'sales', label: 'Sales & Receipts', path: '/dashboard/sales', icon: Receipt, section: 'core' as const }] : []),
+    ...(caps.supportsFarmCycles && can('farm.manage') ? [{ id: 'farm-cycles', label: 'Farm Cycles', path: '/dashboard/farm-cycles', icon: Sprout, section: 'core' as const }] : []),
     ...(capabilities.supportsBatchExpiry && can('batches.manage')
       ? [{ id: 'batches', label: 'Batch & Expiry', path: '/dashboard/batches', icon: Pill, section: 'industry' as const }]
       : []),

@@ -3,11 +3,16 @@
 declare(strict_types=1);
 
 use App\Core\Accounting\AccountingController;
+use App\Core\Agriculture\AgricultureController;
+use App\Core\Agriculture\FarmCycleService;
+use App\Core\Agriculture\FarmInputService;
 use App\Core\Auth\AuthController;
 use App\Core\Auth\SessionAuthService;
 use App\Core\Billing\BillingController;
 use App\Core\Billing\Gateways\FlutterwaveGateway;
 use App\Core\Billing\Gateways\PaystackGateway;
+use App\Core\Contacts\ContactsController;
+use App\Core\Contacts\ContactsService;
 use App\Core\Inventory\CatalogController;
 use App\Core\Inventory\InventoryLedgerService;
 use App\Core\Inventory\StockTransferController;
@@ -120,6 +125,7 @@ return static function (): Container {
         $c->get(PDO::class),
         $c->get(InventoryLedgerService::class),
         $c->get(AuditLogger::class),
+        $c->get(SessionAuthService::class),
         $c->get(PermissionService::class)
     ));
 
@@ -146,6 +152,23 @@ return static function (): Container {
         $c->get(PDO::class),
         $c->get(PermissionService::class)
     ));
+
+    $container->set(AgricultureController::class, static fn(Container $c): AgricultureController => new AgricultureController(
+        $c->get(FarmCycleService::class),
+        $c->get(FarmInputService::class),
+        $c->get(AuditLogger::class),
+        $c->get(PermissionService::class),
+    ));
+
+    $container->set(ContactsService::class, static fn(Container $c): ContactsService => new ContactsService($c->get(PDO::class)));
+    
+    $container->set(ContactsController::class, static fn(Container $c): ContactsController => new ContactsController(
+        $c->get(ContactsService::class),
+        $c->get(PermissionService::class),
+        $c->get(AuditLogger::class)
+    ));
+
+
 
 
     return $container;

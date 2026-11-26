@@ -38,6 +38,7 @@ export const AVAILABLE_PERMISSIONS: PermissionOption[] = [
   { key: 'dashboard.view', label: 'View Branch Dashboard & KPIs' },
   { key: 'pos.sell', label: 'POS Checkout & Sales' },
   { key: 'sales.view', label: 'View Sales & Reprint Receipts' },
+  { key: 'farm.manage', label: 'Manage Livestock & Crop Cycles' },
   { key: 'catalog.manage', label: 'Add / Edit Catalog Items' },
   { key: 'inventory.restock', label: 'Restock & Adjust Inventory' },
   { key: 'transfers.manage', label: 'Dispatch & Receive Stock Transfers' },

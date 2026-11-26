@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Building2, ChevronsUpDown } from 'lucide-react';
 import { useAuth } from '../../core/auth/AuthContext';
 import { AddBranchModal } from './AddBranchModal';
-import { AddBusinessModal } from './AddBusinessModal';
 import { BusinessSwitcherDropdown } from './BusinessSwitcherDropdown';
 import type { BusinessSwitcherProps } from './WorkspaceLayout.types';
 import { WorkspaceSwitchOverlay } from './WorkspaceSwitchOverlay';
+import { useNavigate } from 'react-router-dom';
 
 export function BusinessSwitcher({
   businesses,
@@ -16,11 +16,11 @@ export function BusinessSwitcher({
 }: BusinessSwitcherProps) {
   const { me, refreshProfile } = useAuth();
   const isOwner = Boolean(me?.user.is_owner);
+  const navigate = useNavigate();
 
   const [open, setOpen] = useState(false);
   const [switchingLabel, setSwitchingLabel] = useState<string | null>(null);
   const [addBranchOpen, setAddBranchOpen] = useState(false);
-  const [addBusinessOpen, setAddBusinessOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -38,6 +38,10 @@ export function BusinessSwitcher({
     onSelectBranch(businessId, branchId);
     window.setTimeout(() => setSwitchingLabel(null), 650);
   };
+
+  const addBusiness = () => {
+    navigate('/onboarding?mode=new')
+  }
 
   return (
     <>
@@ -71,7 +75,7 @@ export function BusinessSwitcher({
             isOwner={isOwner}
             onSelect={triggerSwitch}
             onOpenAddBranch={() => { setOpen(false); setAddBranchOpen(true); }}
-            onOpenAddBusiness={() => { setOpen(false); setAddBusinessOpen(true); }}
+            onOpenAddBusiness={addBusiness}
           />
         )}
       </div>
@@ -90,15 +94,6 @@ export function BusinessSwitcher({
           }}
         />
       )}
-
-      <AddBusinessModal
-        open={addBusinessOpen}
-        onClose={() => setAddBusinessOpen(false)}
-        onCreated={async (bid, brid) => {
-          await refreshProfile();
-          triggerSwitch(bid, brid, 'New Business Workspace');
-        }}
-      />
     </>
   );
 }

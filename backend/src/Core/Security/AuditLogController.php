@@ -37,14 +37,20 @@ final class AuditLogController {
             FROM activity_logs al
             LEFT JOIN users u ON u.id = al.user_id
             LEFT JOIN branches br ON br.id = al.branch_id
-            LEFT JOIN user_branch_roles ubr ON ubr.user_id = u.id
-            LEFT JOIN business_roles bro ON bro.id = ubr.role_id
-            WHERE al.account_id = :aid AND (al.business_id = :bid OR al.business_id IS NULL)
+            LEFT JOIN user_branch_roles ubr ON ubr.user_id = u.id AND ubr.branch_id = br.id
+            LEFT JOIN business_roles bro ON bro.id = ubr.role_id AND bro.business_id = :bid2
+            WHERE al.account_id = :aid
+              AND al.business_id = :bid
             GROUP BY al.id, al.action, al.entity_type, al.entity_id, al.ip_address, al.occurred_at, u.full_name, u.is_owner, br.name
             ORDER BY al.occurred_at DESC
             LIMIT 100
         ");
-        $stmt->execute([':aid' => $accountId, ':bid' => $businessId]);
+        $stmt->execute([
+            ':aid'  => $accountId,
+            ':bid'  => $businessId,
+            ':bid2' => $businessId,
+        ]);
+
 
         return JsonResponder::success($response, ['logs' => $stmt->fetchAll()]);
     }

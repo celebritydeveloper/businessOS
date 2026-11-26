@@ -66,6 +66,8 @@ final class StaffController {
         ]);
     }
 
+    
+
     public function createCustomRole(Request $request, Response $response, array $args): Response {
         $userId = (string) $request->getAttribute('auth_user_id');
         $isOwner = (bool) $request->getAttribute('auth_is_owner');
@@ -232,6 +234,8 @@ final class StaffController {
         return JsonResponder::success($response, ['email' => $user['email']]);
     }
 
+
+
     public function updateStaffPin(Request $request, Response $response, array $args): Response {
         $accountId = (string) $request->getAttribute('auth_account_id');
         $actorId = (string) $request->getAttribute('auth_user_id');
@@ -248,6 +252,8 @@ final class StaffController {
         $this->audit->log($accountId, 'staff.pin_updated', $actorId, null, null, 'user', $staffId);
         return JsonResponder::success($response, ['updated' => true]);
     }
+
+
 
     public function toggleStaffStatus(Request $request, Response $response, array $args): Response {
         $accountId = (string) $request->getAttribute('auth_account_id');
@@ -266,6 +272,7 @@ final class StaffController {
         $this->audit->log($accountId, $isActive ? 'staff.activated' : 'staff.suspended', $actorId, null, null, 'user', $staffId);
         return JsonResponder::success($response, ['is_active' => (bool) $isActive]);
     }
+
 
     public function verifyPosPin(Request $request, Response $response, array $args): Response {
         $accountId = (string) $request->getAttribute('auth_account_id');

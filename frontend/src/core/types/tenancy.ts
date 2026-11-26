@@ -1,4 +1,4 @@
-export type IndustryType = 'retail' | 'pharmacy' | 'supermarket' | 'laundry' | 'restaurant' | 'farm';
+export type IndustryType = 'retail' | 'pharmacy' | 'supermarket' | 'laundry' | 'restaurant' | 'agriculture' | 'creative';
 
 export type RegistrationStatus = 'unregistered' | 'registered';
 

@@ -11,14 +11,16 @@ final class DefaultBusinessSeeder
 {
     public function __construct(private PDO $pdo) {}
 
-    public function seed(string $businessId, string $industryType, string $businessName = ''): void {
+    public function seed(string $businessId, string $industryType, string $businessName = ''): void
+    {
         $this->seedCategories($businessId, $industryType);
         $this->seedChartOfAccounts($businessId);
         $this->seedBranding($businessId, $businessName);
         $this->seedRoles($businessId, $industryType);
     }
 
-    private function seedBranding(string $businessId, string $businessName): void {
+    private function seedBranding(string $businessId, string $businessName): void
+    {
         $stmt = $this->pdo->prepare("
             INSERT IGNORE INTO business_branding (id, business_id, app_name, primary_color, secondary_color)
             VALUES (:id, :bid, :name, '#0F4EF0', '#0F172A')
@@ -30,25 +32,41 @@ final class DefaultBusinessSeeder
         ]);
     }
 
-
-    private function seedCategories(string $businessId, string $industryType): void  {
-        $categories = $industryType === 'pharmacy'
-            ? [
+    private function seedCategories(string $businessId, string $industryType): void
+    {
+        $map = [
+            'pharmacy' => [
                 'Prescription Drugs (Rx)',
                 'Over-the-Counter (OTC)',
                 'Antibiotics & Anti-Infectives',
                 'Vitamins & Supplements',
                 'First Aid & Medical Devices',
                 'Mother & Baby Care',
-            ]
-            : [
-                'General Merchandise',
-                'Beverages & Drinks',
-                'Groceries & Packaged Foods',
-                'Personal Care & Toiletries',
-                'Household & Cleaning',
-                'Electronics & Accessories',
-            ];
+            ],
+            'agriculture' => [
+                'Livestock & Poultry Feed',
+                'Day-Old Chicks & Fingerlings',
+                'Seeds & Fertilizers',
+                'Agro-Vet & Vaccines',
+                'Harvested Farm Produce',
+            ],
+            'creative' => [
+                'Branding & Identity Design',
+                'Web & App Development',
+                'Social Media & Content Retainers',
+                'Photography & Video Production',
+                'Consulting & Strategy',
+            ],
+        ];
+
+        $categories = $map[$industryType] ?? [
+            'General Merchandise',
+            'Beverages & Drinks',
+            'Groceries & Packaged Foods',
+            'Personal Care & Toiletries',
+            'Household & Cleaning',
+            'Electronics & Accessories',
+        ];
 
         $stmt = $this->pdo->prepare("
             INSERT IGNORE INTO categories (id, business_id, name, slug)
@@ -66,30 +84,31 @@ final class DefaultBusinessSeeder
         }
     }
 
-    private function seedChartOfAccounts(string $businessId): void {
+    private function seedChartOfAccounts(string $businessId): void
+    {
         $accounts = [
-            ['1000', 'Cash on Hand (Till)', 'asset', 'debit'],
-            ['1010', 'Bank & POS Terminal Settlements', 'asset', 'debit'],
-            ['1200', 'Inventory Asset', 'asset', 'debit'],
-            ['2000', 'Accounts Payable (Suppliers)', 'liability', 'credit'],
-            ['2100', 'Output VAT Payable (FIRS)', 'liability', 'credit'],
-            ['3000', "Owner's Equity", 'equity', 'credit'],
-            ['4000', 'Sales Revenue', 'revenue', 'credit'],
-            ['4100', 'Sales Discounts & Returns', 'revenue', 'debit'],
+            ['1000', 'Cash on Hand (Till)', 'asset', 'debit', null],
+            ['1010', 'Bank & POS Terminal Settlements', 'asset', 'debit', null],
+            ['1200', 'Inventory Asset', 'asset', 'debit', null],
+            ['2000', 'Accounts Payable (Suppliers)', 'liability', 'credit', null],
+            ['2100', 'Output VAT Payable (FIRS)', 'liability', 'credit', null],
+            ['3000', "Owner's Equity", 'equity', 'credit', null],
+            ['4000', 'Sales Revenue', 'revenue', 'credit', null],
+            ['4100', 'Sales Discounts & Returns', 'revenue', 'debit', null],
             ['5000', 'Cost of Goods Sold (COGS)', 'expense', 'debit', 'Direct cost of inventory items sold through POS'],
             ['5100', 'Operating & Utility Expenses', 'expense', 'debit', 'Shop/office rent, PHCN/NEPA prepaid electricity, water, waste disposal'],
-            ['6000', 'Staff Salaries & Wages', 'debit', 'Monthly staff salaries, shift allowances, casual labor'],
-            ['6100', 'Fuel, Generator & Logistics', 'debit', 'PMS/Diesel for generator, delivery riders, waybill & transport'],
-            ['6200', 'General Operating Expenses', 'debit', 'Internet/data, airtime, POS paper rolls, cleaning supplies, repairs'],
-            ['6300', 'Inventory Shrinkage & Write-Offs', 'debit', 'Damaged, expired, or lost stock adjustments'],
+            ['6000', 'Staff Salaries & Wages', 'expense', 'debit', 'Monthly staff salaries, shift allowances, casual labor'],
+            ['6100', 'Fuel, Generator & Logistics', 'expense', 'debit', 'PMS/Diesel for generator, delivery riders, waybill & transport'],
+            ['6200', 'General Operating Expenses', 'expense', 'debit', 'Internet/data, airtime, POS paper rolls, cleaning supplies, repairs'],
+            ['6300', 'Inventory Shrinkage & Write-Offs', 'expense', 'debit', 'Damaged, expired, or lost stock adjustments'],
         ];
 
         $stmt = $this->pdo->prepare("
-            INSERT IGNORE INTO chart_of_accounts (id, business_id, code, name, account_type, normal_balance, is_system)
-            VALUES (:id, :bid, :code, :name, :type, :bal, 1)
+            INSERT IGNORE INTO chart_of_accounts (id, business_id, code, name, account_type, normal_balance, description, is_system)
+            VALUES (:id, :bid, :code, :name, :type, :bal, :desc, 1)
         ");
 
-        foreach ($accounts as [$code, $name, $type, $balance]) {
+        foreach ($accounts as [$code, $name, $type, $balance, $desc]) {
             $stmt->execute([
                 ':id'   => Uuid::uuid4()->toString(),
                 ':bid'  => $businessId,
@@ -97,20 +116,30 @@ final class DefaultBusinessSeeder
                 ':name' => $name,
                 ':type' => $type,
                 ':bal'  => $balance,
+                ':desc' => $desc,
             ]);
         }
     }
-    
 
-    private function seedRoles(string $businessId, string $industryType): void {
+    private function seedRoles(string $businessId, string $industryType): void
+    {
+        $managerPerms = ['dashboard.view', 'pos.sell', 'sales.view', 'catalog.manage', 'inventory.restock', 'transfers.manage', 'batches.manage', 'accounting.view', 'staff.manage', 'audit.view'];
+        if ($industryType === 'agriculture') {
+            $managerPerms[] = 'farm.manage';
+        }
+
         $roles = [
-            ['Branch Manager', 'manager', 'Full branch operations, POS, stock, transfers & audit view', ['pos.sell', 'sales.view', 'catalog.manage', 'inventory.restock', 'transfers.manage', 'batches.manage', 'staff.manage', 'audit.view']],
+            ['Branch Manager', 'manager', 'Full branch operations, POS, stock, transfers & reports', $managerPerms],
             ['POS Cashier', 'cashier', 'POS checkout terminal and receipt history', ['pos.sell', 'sales.view']],
             ['Inventory Clerk', 'inventory_clerk', 'Catalog management, supplier restocks & branch stock transfers', ['catalog.manage', 'inventory.restock', 'transfers.manage']],
         ];
 
         if ($industryType === 'pharmacy') {
             $roles[] = ['Licensed Pharmacist', 'pharmacist', 'Dispensing POS, FEFO batch & expiry control, and drug intake', ['pos.sell', 'sales.view', 'catalog.manage', 'inventory.restock', 'batches.manage']];
+        }
+
+        if ($industryType === 'agriculture') {
+            $roles[] = ['Farm Supervisor', 'farm_supervisor', 'Manage livestock/crop cycles, daily feed, mortality & harvests', ['farm.manage', 'inventory.restock', 'batches.manage']];
         }
 
         $stmt = $this->pdo->prepare("

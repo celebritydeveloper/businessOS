@@ -9,14 +9,16 @@ import { PosCartPanel } from './PosCartPanel';
 import { PosProductGrid } from './PosProductGrid';
 import { SplitPaymentModal } from './SplitPaymentModal';
 import { ThermalReceiptModal } from './ThermalReceiptModal';
+import { POS_LOCK_STORAGE_KEY, SwitchCashierModal } from './SwitchCashierModal';
+import { Button } from '../../shared/ui/Button';
+import { KeyRound } from 'lucide-react';
 
 export function PosTerminalPage() {
-  const { activeBusiness, activeBranch } = useAuth();
+  const { me, activeBusiness, activeBranch } = useAuth();
   const [items, setItems] = useState<CatalogItem[]>([]);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [branding, setBranding] = useState<BusinessBranding | null>(null);
   const [showPoweredBy, setShowPoweredBy] = useState(true);
-
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [cart, setCart] = useState<PosCartItem[]>([]);
@@ -24,6 +26,8 @@ export function PosTerminalPage() {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [receipt, setReceipt] = useState<CompletedReceiptData | null>(null);
+  const [switchCashierOpen, setSwitchCashierOpen] = useState(() => localStorage.getItem(POS_LOCK_STORAGE_KEY) === '1');
+
 
   const loadPosData = useCallback(async () => {
     if (!activeBusiness?.id || !activeBranch?.id) return;
@@ -103,13 +107,10 @@ export function PosTerminalPage() {
   };
 
   if (!activeBusiness || !activeBranch) return null;
-
   const isVatReg = Boolean(activeBusiness.is_vat_registered);
   const vatRate = isVatReg ? Number(activeBusiness.default_vat_rate || 7.5) : 0;
   const subtotal = cart.reduce((s, c) => s + c.unit_price * c.quantity, 0);
-  const vatAmount = isVatReg
-    ? cart.reduce((s, c) => (c.is_vat_exempt ? s : s + c.unit_price * c.quantity * (vatRate / 100)), 0)
-    : 0;
+  const vatAmount = isVatReg ? cart.reduce((s, c) => (c.is_vat_exempt ? s : s + c.unit_price * c.quantity * (vatRate / 100)), 0) : 0;
   const grandTotal = Math.max(0, subtotal - discount + vatAmount);
 
   const handleConfirmSale = async (payments: SalePaymentSplit[], customerName: string, customerPhone: string) => {
@@ -119,7 +120,6 @@ export function PosTerminalPage() {
     const soldAt = new Date().toISOString();
     const amountPaid = payments.reduce((s, p) => s + p.amount, 0);
     const changeDue = Math.max(0, amountPaid - grandTotal);
-
     const salePayload = {
       client_sale_uuid: clientSaleUuid,
       receipt_number: receiptNo,
@@ -178,31 +178,42 @@ export function PosTerminalPage() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-[calc(100vh-8rem)]">
-      <div className="lg:col-span-7 xl:col-span-8">
-        <PosProductGrid
-          items={filteredItems}
-          categories={categories}
-          search={search}
-          selectedCategory={selectedCategory}
-          onSearchChange={setSearch}
-          onCategoryChange={setSelectedCategory}
-          onAddToCart={handleAddToCart}
-        />
+    <div className="space-y-4">
+      <div className="bg-white rounded-2xl border border-slate-200 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="text-xs text-slate-600">
+          Active Cashier: <strong className="text-slate-900">{me?.user.full_name}</strong> &bull; {activeBranch.name}
+        </div>
+        <Button type="button" variant="secondary" onClick={() => setSwitchCashierOpen(true)}>
+          <KeyRound className="w-4 h-4" /> Switch Cashier
+        </Button>
       </div>
 
-      <div className="lg:col-span-5 xl:col-span-4">
-        <PosCartPanel
-          cart={cart}
-          discount={discount}
-          isVatRegistered={isVatReg}
-          defaultVatRate={vatRate}
-          onUpdateQty={handleUpdateQty}
-          onRemoveItem={(id) => setCart((p) => p.filter((c) => c.catalog_item_id !== id))}
-          onDiscountChange={setDiscount}
-          onClearCart={() => { setCart([]); setDiscount(0); }}
-          onOpenCheckout={() => setCheckoutOpen(true)}
-        />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-[calc(100vh-11rem)]">
+        <div className="lg:col-span-7 xl:col-span-8">
+          <PosProductGrid
+            items={filteredItems}
+            categories={categories}
+            search={search}
+            selectedCategory={selectedCategory}
+            onSearchChange={setSearch}
+            onCategoryChange={setSelectedCategory}
+            onAddToCart={handleAddToCart}
+          />
+        </div>
+
+        <div className="lg:col-span-5 xl:col-span-4">
+          <PosCartPanel
+            cart={cart}
+            discount={discount}
+            isVatRegistered={isVatReg}
+            defaultVatRate={vatRate}
+            onUpdateQty={handleUpdateQty}
+            onRemoveItem={(id) => setCart((p) => p.filter((c) => c.catalog_item_id !== id))}
+            onDiscountChange={setDiscount}
+            onClearCart={() => { setCart([]); setDiscount(0); }}
+            onOpenCheckout={() => setCheckoutOpen(true)}
+          />
+        </div>
       </div>
 
       <SplitPaymentModal
@@ -214,6 +225,16 @@ export function PosTerminalPage() {
       />
 
       <ThermalReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
+
+      <SwitchCashierModal
+        open={switchCashierOpen}
+        businessId={activeBusiness.id}
+        branchId={activeBranch.id}
+        businessName={activeBusiness.name}
+        branchName={activeBranch.name}
+        onUnlocked={() => setSwitchCashierOpen(false)}
+      />
+
     </div>
   );
 }

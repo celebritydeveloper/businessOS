@@ -53,7 +53,7 @@ final class OnboardingController {
         $planSlug = strtolower(trim((string) ($body['plan_slug'] ?? 'starter')));
         $billingCycle = ($body['billing_cycle'] ?? 'monthly') === 'yearly' ? 'yearly' : 'monthly';
 
-        $allowedIndustries = ['retail', 'pharmacy']; // V1 flagship modules
+        $allowedIndustries = ['retail', 'pharmacy', 'supermarket', 'laundry', 'restaurant', 'agriculture']; // V1 flagship modules
         if ($businessName === '' || !in_array($industry, $allowedIndustries, true)) {
             return JsonResponder::error($response, 'Business name and valid v1 industry (retail or pharmacy) are required.', 'VALIDATION_ERROR', 422);
         }
@@ -427,7 +427,7 @@ final class OnboardingController {
         $branchAddress = trim((string) ($body['branch_address'] ?? ''));
         $branchPhone = trim((string) ($body['branch_phone'] ?? ''));
 
-        $allowedIndustries = ['retail', 'pharmacy', 'supermarket', 'laundry', 'restaurant', 'farm'];
+        $allowedIndustries = ['retail', 'pharmacy', 'supermarket', 'laundry', 'restaurant', 'agriculture'];
         if ($businessName === '' || !in_array($industryType, $allowedIndustries, true) || $branchName === '') {
             return JsonResponder::error($response, 'Business name, valid industry, and initial branch name are required.', 'VALIDATION_ERROR', 422);
         }

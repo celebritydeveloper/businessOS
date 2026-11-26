@@ -40,8 +40,7 @@ export function BatchExpiryPage() {
       notes: `Expired batch write-off (${batch.batch_number})`,
     };
 
-    const res = await apiFetch(
-      `/workspace/businesses/${activeBusiness.id}/branches/${activeBranch.id}/stock-movements`,
+    const res = await apiFetch(`/workspace/businesses/${activeBusiness.id}/branches/${activeBranch.id}/stock-movements`,
       { method: 'POST', body: JSON.stringify(payload) }
     );
 
@@ -68,7 +67,7 @@ export function BatchExpiryPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Pharmacy Batch &amp; FEFO Expiry Monitor</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Batch &amp; FEFO Expiry Monitor</h1>
         <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
           First-Expired, First-Out (FEFO) batch tracking for <strong>{activeBranch?.name}</strong>. Expired lots are automatically blocked at POS.
         </p>

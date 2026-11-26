@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { apiFetch } from '../../core/api/httpClient';
 import { useAuth } from '../../core/auth/AuthContext';
-import type { OnboardingBusinessPayload, RegistrationStatus, RegistrationType } from '../../core/types';
+import type { IndustryType, OnboardingBusinessPayload, RegistrationStatus, RegistrationType } from '../../core/types';
 import { AuthSplitLayout } from '../../shared/layouts/AuthSplitLayout';
 import { toast } from '../../shared/ui/ToastProvider';
 import { OnboardingStep1 } from './OnboardingStep1';
@@ -10,10 +11,14 @@ import { OnboardingStep2 } from './OnboardingStep2';
 
 export function OnboardingPage() {
   const navigate = useNavigate();
-  const { refreshProfile } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { me, refreshProfile } = useAuth();
+
+  const isAdditional = searchParams.get('mode') === 'new' && (me?.businesses.length ?? 0) > 0;
+
   const [step, setStep] = useState<1 | 2>(1);
   const [businessName, setBusinessName] = useState('');
-  const [industry, setIndustry] = useState<'retail' | 'pharmacy'>('retail');
+  const [industry, setIndustry] = useState<IndustryType>('retail');
   const [branchName, setBranchName] = useState('Main Branch');
   const [branchAddress, setBranchAddress] = useState('');
   const [branchPhone, setBranchPhone] = useState('');
@@ -45,27 +50,59 @@ export function OnboardingPage() {
       plan_slug: 'starter',
     };
 
-    const res = await apiFetch('/onboarding/business', {
+    const endpoint = isAdditional ? '/workspace/businesses' : '/onboarding/business';
+    const res = await apiFetch<{ business_id: string; branch_id: string }>(endpoint, {
       method: 'POST',
       body: JSON.stringify(payload),
     });
     setLoading(false);
 
     if (!res.ok) {
-      toast.error(res.body.message || 'Could not complete onboarding.', 'Setup Error');
+      toast.error(res.body.message || 'Could not complete business setup.', 'Setup Error');
       return;
     }
 
+    if (res.body.data?.business_id && res.body.data?.branch_id) {
+      localStorage.setItem('bos_active_business_id', res.body.data.business_id);
+      localStorage.setItem('bos_active_branch_id', res.body.data.branch_id);
+    }
+
     await refreshProfile();
-    toast.success('Your 24-hour free trial is active & accounts seeded!', 'Workspace Ready');
+    toast.success(
+      isAdditional
+        ? `Business "${businessName}" created & seeded!`
+        : 'Your 24-hour free trial is active & accounts seeded!',
+      'Workspace Ready'
+    );
     navigate('/dashboard', { replace: true });
   };
 
   return (
     <AuthSplitLayout
-      title={step === 1 ? 'Set up your business' : 'Branch, CAC & Tax setup'}
-      subtitle={`Step ${step} of 2 — Your 24-hour free trial & default accounts initialize automatically.`}
+      title={
+        step === 1
+          ? isAdditional
+            ? 'Add a new business'
+            : 'Set up your business'
+          : 'Branch, CAC & Tax setup'
+      }
+      subtitle={
+        isAdditional
+          ? `Step ${step} of 2 — Default categories, Chart of Accounts & roles will be seeded automatically.`
+          : `Step ${step} of 2 — Your 24-hour free trial & default accounts initialize automatically.`
+      }
     >
+      {isAdditional && (
+        <div className="mb-4">
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-brand-600"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" /> Back to Dashboard
+          </Link>
+        </div>
+      )}
+
       <div className="flex gap-2 mb-6">
         <div className="h-1.5 flex-1 rounded-full bg-brand-600" />
         <div className={`h-1.5 flex-1 rounded-full ${step === 2 ? 'bg-brand-600' : 'bg-slate-200'}`} />

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-export type IndustryType = 'retail' | 'pharmacy' | 'supermarket' | 'laundry' | 'restaurant' | 'farm';
+export type IndustryType = 'retail' | 'pharmacy' | 'supermarket' | 'laundry' | 'restaurant' | 'agriculture';
 
 export interface IndustryNavItem {
   id: string;

@@ -1,4 +1,4 @@
-import type { RegistrationStatus, RegistrationType } from '../../core/types';
+import type { IndustryType, RegistrationStatus, RegistrationType } from '../../core/types';
 
 export interface RegistrationTypeOption {
   value: RegistrationType;
@@ -7,9 +7,9 @@ export interface RegistrationTypeOption {
 
 export interface OnboardingStep1Props {
   businessName: string;
-  industry: 'retail' | 'pharmacy';
+  industry: IndustryType;
   onBusinessNameChange: (val: string) => void;
-  onIndustryChange: (val: 'retail' | 'pharmacy') => void;
+  onIndustryChange: (val: IndustryType) => void;
   onNext: () => void;
 }
 
