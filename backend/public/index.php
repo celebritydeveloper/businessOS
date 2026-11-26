@@ -21,6 +21,8 @@ use App\Core\Agriculture\AgricultureController;
 use App\Core\Auth\AuthController;
 use App\Core\Billing\BillingController;
 use App\Core\Contacts\ContactsController;
+use App\Core\Contacts\CustomerController;
+use App\Core\Contacts\SupplierController;
 use App\Core\Http\JsonResponder;
 use App\Core\Inventory\CatalogController;
 use App\Core\Inventory\StockTransferController;
@@ -122,12 +124,15 @@ $app->group('/api/v1', function (RouteCollectorProxy $api): void {
         $ws->patch('/staff/{userId}/status', [StaffController::class, 'toggleStaffStatus']);
         $ws->post('/branches/{branchId}/verify-pin', [StaffController::class, 'verifyPosPin']);
         $ws->get('/businesses/{businessId}/audit-logs', [AuditLogController::class, 'listLogs']);
-        $ws->get('/businesses/{businessId}/customers', [ContactsController::class, 'listCustomers']);
-        $ws->post('/businesses/{businessId}/customers', [ContactsController::class, 'createCustomer']);
-        $ws->post('/businesses/{businessId}/customers/{customerId}/payments', [ContactsController::class, 'recordCustomerPayment']);
-        $ws->get('/businesses/{businessId}/suppliers', [ContactsController::class, 'listSuppliers']);
-        $ws->post('/businesses/{businessId}/suppliers', [ContactsController::class, 'createSupplier']);
-        $ws->post('/businesses/{businessId}/suppliers/{supplierId}/transactions', [ContactsController::class, 'recordSupplierActivity']);
+        $ws->get('/businesses/{businessId}/customers', [CustomerController::class, 'list']);
+        $ws->post('/businesses/{businessId}/customers', [CustomerController::class, 'create']);
+        $ws->patch('/businesses/{businessId}/customers/{customerId}', [CustomerController::class, 'update']);
+        $ws->post('/businesses/{businessId}/customers/{customerId}/payments', [CustomerController::class, 'recordPayment']);
+
+        $ws->get('/businesses/{businessId}/suppliers', [SupplierController::class, 'list']);
+        $ws->post('/businesses/{businessId}/suppliers', [SupplierController::class, 'create']);
+        $ws->patch('/businesses/{businessId}/suppliers/{supplierId}', [SupplierController::class, 'update']);
+        $ws->post('/businesses/{businessId}/suppliers/{supplierId}/transactions', [SupplierController::class, 'recordTransaction']);
     })->add(SubscriptionGuardMiddleware::class)->add(JwtAuthMiddleware::class);
 
     $api->get('/public/branding', [BrandingController::class, 'resolvePublicBranding']);

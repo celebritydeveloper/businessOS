@@ -6,7 +6,7 @@ export interface SidebarNavItem {
   label: string;
   path: string;
   icon: LucideIcon;
-  section: 'core' | 'industry' | 'admin';
+  section: 'core' | 'industry' | 'admin' | 'contacts';
   badge?: string;
 }
 

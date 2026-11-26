@@ -1,6 +1,6 @@
 import type { BusinessBranding, CatalogItem, ProductCategory } from '../../core/types';
 
-export type PaymentMethodType = 'cash' | 'pos_card' | 'transfer';
+export type PaymentMethodType = 'cash' | 'pos_card' | 'transfer' | 'credit';
 
 export interface PosCartItem {
   catalog_item_id: string;
@@ -94,10 +94,16 @@ export interface PosCartPanelProps {
 
 export interface SplitPaymentModalProps {
   open: boolean;
+  businessId: string;
   grandTotal: number;
   submitting: boolean;
   onClose: () => void;
-  onConfirmSale: (payments: SalePaymentSplit[], customerName: string, customerPhone: string) => void;
+  onConfirmSale: (
+    payments: SalePaymentSplit[],
+    customerName: string,
+    customerPhone: string,
+    customerId?: string
+  ) => void;
 }
 
 export interface ThermalReceiptModalProps {

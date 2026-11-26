@@ -11,15 +11,20 @@ use App\Core\Auth\SessionAuthService;
 use App\Core\Billing\BillingController;
 use App\Core\Billing\Gateways\FlutterwaveGateway;
 use App\Core\Billing\Gateways\PaystackGateway;
-use App\Core\Contacts\ContactsController;
-use App\Core\Contacts\ContactsService;
+use App\Core\Contacts\CustomerController;
+use App\Core\Contacts\CustomerService;
+use App\Core\Contacts\SupplierController;
+use App\Core\Contacts\SupplierService;
 use App\Core\Inventory\CatalogController;
 use App\Core\Inventory\InventoryLedgerService;
 use App\Core\Inventory\StockTransferController;
 use App\Core\Middleware\JwtAuthMiddleware;
 use App\Core\Middleware\SubscriptionGuardMiddleware;
 use App\Core\Notifications\MailerService;
-use App\Core\Pos\PosController;
+use App\Core\Pos\PosSalesController;
+use App\Core\Pos\PosShiftController;
+use App\Core\Pos\SaleCheckoutService;
+use App\Core\Pos\SaleCustomerCreditService;
 use App\Core\Security\AuditLogController;
 use App\Core\Security\AuditLogger;
 use App\Core\Security\CryptoService;
@@ -121,9 +126,25 @@ return static function (): Container {
         $c->get(PermissionService::class)
     ));
 
-    $container->set(PosController::class, static fn(Container $c): PosController => new PosController(
+    $container->set(SaleCustomerCreditService::class, static fn(Container $c): SaleCustomerCreditService => new SaleCustomerCreditService(
+        $c->get(PDO::class)
+    ));
+
+    $container->set(SaleCheckoutService::class, static fn(Container $c): SaleCheckoutService => new SaleCheckoutService(
         $c->get(PDO::class),
         $c->get(InventoryLedgerService::class),
+        $c->get(SaleCustomerCreditService::class)
+    ));
+
+    $container->set(PosSalesController::class, static fn(Container $c): PosSalesController => new PosSalesController(
+        $c->get(PDO::class),
+        $c->get(SaleCheckoutService::class),
+        $c->get(AuditLogger::class),
+        $c->get(PermissionService::class)
+    ));
+
+    $container->set(PosShiftController::class, static fn(Container $c): PosShiftController => new PosShiftController(
+        $c->get(PDO::class),
         $c->get(AuditLogger::class),
         $c->get(SessionAuthService::class),
         $c->get(PermissionService::class)
@@ -160,10 +181,17 @@ return static function (): Container {
         $c->get(PermissionService::class),
     ));
 
-    $container->set(ContactsService::class, static fn(Container $c): ContactsService => new ContactsService($c->get(PDO::class)));
+    $container->set(CustomerService::class, static fn(Container $c): CustomerService => new CustomerService($c->get(PDO::class)));
+    $container->set(SupplierService::class, static fn(Container $c): SupplierService => new SupplierService($c->get(PDO::class)));
     
-    $container->set(ContactsController::class, static fn(Container $c): ContactsController => new ContactsController(
-        $c->get(ContactsService::class),
+    
+    $container->set(CustomerController::class, static fn(Container $c): CustomerController => new CustomerController(
+        $c->get(CustomerService::class),
+        $c->get(PermissionService::class),
+        $c->get(AuditLogger::class)
+    ));
+    $container->set(SupplierController::class, static fn(Container $c): SupplierController => new SupplierController(
+        $c->get(SupplierService::class),
         $c->get(PermissionService::class),
         $c->get(AuditLogger::class)
     ));

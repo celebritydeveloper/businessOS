@@ -44,6 +44,7 @@ export const AVAILABLE_PERMISSIONS: PermissionOption[] = [
   { key: 'transfers.manage', label: 'Dispatch & Receive Stock Transfers' },
   { key: 'batches.manage', label: 'Pharmacy Batch & FEFO Expiry Control' },
   { key: 'staff.manage', label: 'Manage Staff & 4-Digit POS PINs' },
+  { key: 'contacts.manage', label: 'Manage Customers, Credit & Suppliers' },
   { key: 'audit.view', label: 'View Activity Audit Logs' },
   { key: 'accounting.view', label: 'View Accounting, Trial Balance & P&L' },
   { key: 'billing.manage', label: 'Manage Subscription & Billing' },

@@ -113,7 +113,7 @@ export function PosTerminalPage() {
   const vatAmount = isVatReg ? cart.reduce((s, c) => (c.is_vat_exempt ? s : s + c.unit_price * c.quantity * (vatRate / 100)), 0) : 0;
   const grandTotal = Math.max(0, subtotal - discount + vatAmount);
 
-  const handleConfirmSale = async (payments: SalePaymentSplit[], customerName: string, customerPhone: string) => {
+  const handleConfirmSale = async (payments: SalePaymentSplit[], customerName: string, customerPhone: string, customerId?: string) => {
     setSubmitting(true);
     const clientSaleUuid = crypto.randomUUID();
     const receiptNo = `BOS-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -123,6 +123,7 @@ export function PosTerminalPage() {
     const salePayload = {
       client_sale_uuid: clientSaleUuid,
       receipt_number: receiptNo,
+      customer_id: customerId || '',
       customer_name: customerName,
       customer_phone: customerPhone,
       discount_amount: discount,
@@ -218,11 +219,13 @@ export function PosTerminalPage() {
 
       <SplitPaymentModal
         open={checkoutOpen}
+        businessId={activeBusiness.id}
         grandTotal={grandTotal}
         submitting={submitting}
         onClose={() => setCheckoutOpen(false)}
-        onConfirmSale={(splits, cname, cphone) => void handleConfirmSale(splits, cname, cphone)}
+        onConfirmSale={handleConfirmSale}
       />
+
 
       <ThermalReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
 

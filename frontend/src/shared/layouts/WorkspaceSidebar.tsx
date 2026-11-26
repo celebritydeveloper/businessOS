@@ -13,6 +13,8 @@ import {
   Settings,
   ShoppingCart,
   Sprout,
+  Truck,
+  UserCheck,
   Users,
   X,
 } from 'lucide-react';
@@ -32,27 +34,58 @@ export function WorkspaceSidebar({
   const isOwner = Boolean(me?.user.is_owner);
   const branchPerms = activeBranch?.permissions || [];
   const can = (perm: string) => isOwner || branchPerms.includes('*') || branchPerms.includes(perm);
-  const caps = getIndustryCapabilities(activeBusiness?.industry_type);
-
 
   const capabilities = getIndustryCapabilities(activeBusiness?.industry_type);
   const hasMultipleBranches = (activeBusiness?.branches.length ?? 0) > 1;
 
   const navItems: SidebarNavItem[] = [
-    ...(can('dashboard.view') ? [{ id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, section: 'core' as const }] : []),
-    ...(can('pos.sell') ? [{ id: 'pos', label: 'POS Terminal', path: '/dashboard/pos', icon: ShoppingCart, section: 'core' as const }] : []),
-    ...(can('catalog.manage') || can('inventory.restock') ? [{ id: 'catalog', label: 'Catalog & Stock', path: '/dashboard/catalog', icon: Package, section: 'core' as const }] : []),
-    ...(hasMultipleBranches && can('transfers.manage') ? [{ id: 'transfers', label: 'Stock Transfers', path: '/dashboard/transfers', icon: ArrowLeftRight, section: 'core' as const }] : []),
-    ...(can('sales.view') ? [{ id: 'sales', label: 'Sales & Receipts', path: '/dashboard/sales', icon: Receipt, section: 'core' as const }] : []),
-    ...(caps.supportsFarmCycles && can('farm.manage') ? [{ id: 'farm-cycles', label: 'Farm Cycles', path: '/dashboard/farm-cycles', icon: Sprout, section: 'core' as const }] : []),
+    ...(can('dashboard.view')
+      ? [{ id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, section: 'core' as const }]
+      : []),
+    ...(can('pos.sell')
+      ? [{ id: 'pos', label: 'POS Terminal', path: '/dashboard/pos', icon: ShoppingCart, section: 'core' as const }]
+      : []),
+    ...(can('catalog.manage') || can('inventory.restock')
+      ? [{ id: 'catalog', label: 'Catalog & Stock', path: '/dashboard/catalog', icon: Package, section: 'core' as const }]
+      : []),
+    ...(hasMultipleBranches && can('transfers.manage')
+      ? [{ id: 'transfers', label: 'Stock Transfers', path: '/dashboard/transfers', icon: ArrowLeftRight, section: 'core' as const }]
+      : []),
+    ...(can('sales.view')
+      ? [{ id: 'sales', label: 'Sales & Receipts', path: '/dashboard/sales', icon: Receipt, section: 'core' as const }]
+      : []),
+    ...(can('contacts.manage')
+      ? [
+          { id: 'customers', label: 'Customers', path: '/dashboard/customers', icon: UserCheck, section: 'contacts' as const },
+          { id: 'suppliers', label: 'Suppliers', path: '/dashboard/suppliers', icon: Truck, section: 'contacts' as const },
+        ]
+      : []),
+    ...(capabilities.supportsFarmCycles && can('farm.manage')
+      ? [{ id: 'farm-cycles', label: 'Farm Cycles', path: '/dashboard/farm-cycles', icon: Sprout, section: 'industry' as const }]
+      : []),
     ...(capabilities.supportsBatchExpiry && can('batches.manage')
       ? [{ id: 'batches', label: 'Batch & Expiry', path: '/dashboard/batches', icon: Pill, section: 'industry' as const }]
       : []),
-    ...(can('staff.manage') ? [{ id: 'staff', label: 'Staff & PINs', path: '/dashboard/staff', icon: Users, section: 'admin' as const }] : []),
-    ...(can('audit.view') ? [{ id: 'audit', label: 'Activity Logs', path: '/dashboard/audit', icon: Activity, section: 'admin' as const }] : []),
-    ...(can('accounting.view') ? [{ id: 'accounting', label: 'Accounting & P&L', path: '/dashboard/accounting', icon: BookOpen, section: 'admin' as const }] : []),
+    ...(can('staff.manage')
+      ? [{ id: 'staff', label: 'Staff & PINs', path: '/dashboard/staff', icon: Users, section: 'admin' as const }]
+      : []),
+    ...(can('audit.view')
+      ? [{ id: 'audit', label: 'Activity Logs', path: '/dashboard/audit', icon: Activity, section: 'admin' as const }]
+      : []),
+    ...(can('accounting.view')
+      ? [{ id: 'accounting', label: 'Accounting & P&L', path: '/dashboard/accounting', icon: BookOpen, section: 'admin' as const }]
+      : []),
     { id: 'settings', label: 'Settings', path: '/dashboard/settings', icon: Settings, section: 'admin' },
-    ...(can('billing.manage') ? [{ id: 'billing', label: 'Billing & Plan', path: '/dashboard/billing', icon: CreditCard, section: 'admin' as const }] : []),
+    ...(can('billing.manage')
+      ? [{ id: 'billing', label: 'Billing & Plan', path: '/dashboard/billing', icon: CreditCard, section: 'admin' as const }]
+      : []),
+  ];
+
+  const sections: Array<{ key: SidebarNavItem['section']; label: string }> = [
+    { key: 'core', label: 'Core Operations' },
+    { key: 'contacts', label: 'Contacts' },
+    { key: 'industry', label: 'Industry Tools' },
+    { key: 'admin', label: 'Administration' },
   ];
 
   const sidebarContent = (
@@ -89,27 +122,44 @@ export function WorkspaceSidebar({
         onSelectBranch={setActiveBranch}
       />
 
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-        {navItems.map((item) => {
-          const Icon = item.icon;
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-4">
+        {sections.map((sec) => {
+          const items = navItems.filter((item) => item.section === sec.key);
+          if (items.length === 0) return null;
+
           return (
-            <NavLink
-              key={item.id}
-              to={item.path}
-              end={item.path === '/dashboard'}
-              onClick={onCloseMobile}
-              title={collapsed ? item.label : undefined}
-              className={({ isActive }) =>
-                `flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-semibold transition-colors ${
-                  collapsed ? 'justify-center' : ''
-                } ${
-                  isActive ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                }`
-              }
-            >
-              <Icon className="w-4 h-4 shrink-0" />
-              {!collapsed && <span className="truncate">{item.label}</span>}
-            </NavLink>
+            <div key={sec.key} className="space-y-1">
+              {!collapsed ? (
+                <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  {sec.label}
+                </p>
+              ) : (
+                sec.key !== 'core' && <div className="border-t border-slate-100 my-1.5" />
+              )}
+
+              {items.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <NavLink
+                    key={item.id}
+                    to={item.path}
+                    end={item.path === '/dashboard'}
+                    onClick={onCloseMobile}
+                    title={collapsed ? item.label : undefined}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-semibold transition-colors ${
+                        collapsed ? 'justify-center' : ''
+                      } ${
+                        isActive ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                      }`
+                    }
+                  >
+                    <Icon className="w-4 h-4 shrink-0" />
+                    {!collapsed && <span className="truncate">{item.label}</span>}
+                  </NavLink>
+                );
+              })}
+            </div>
           );
         })}
       </nav>

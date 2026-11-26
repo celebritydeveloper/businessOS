@@ -21,6 +21,8 @@ import { ActivityLogsPage } from './pages/staff/ActivityLogsPage';
 import { StaffManagementPage } from './pages/staff/StaffManagementPage';
 import { WorkspaceLayout } from './shared/layouts/WorkspaceLayout';
 import { ToastProvider } from './shared/ui/ToastProvider';
+import { CustomersPage } from './pages/contacts/CustomersPage';
+import { SuppliersPage } from './pages/contacts/SuppliersPage';
 
 function OnboardingRouteGuard() {
   const { me } = useAuth();
@@ -77,6 +79,8 @@ function AppRoutes() {
         <Route path="audit" element={<ActivityLogsPage />} />
         <Route path="accounting" element={<AccountingPage />} />
         <Route path="farm-cycles" element={<FarmCyclesPage />} />
+        <Route path="customers" element={<CustomersPage />} />
+        <Route path="suppliers" element={<SuppliersPage />} />
         <Route path="billing" element={<BillingManagementPage />} />
         <Route path="settings" element={<SettingsPage />} />
 
