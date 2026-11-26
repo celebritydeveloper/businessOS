@@ -6,6 +6,7 @@ namespace App\Core\Inventory;
 
 use App\Core\Http\JsonResponder;
 use App\Core\Security\AuditLogger;
+use App\Core\Security\PermissionService;
 use PDO;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
@@ -17,13 +18,21 @@ final class StockTransferController
     public function __construct(
         private PDO $pdo,
         private InventoryLedgerService $ledger,
-        private AuditLogger $audit
+        private AuditLogger $audit,
+        private PermissionService $perms
     ) {}
 
-    public function listTransfers(Request $request, Response $response, array $args): Response
-    {
-        $accountId = (string) $request->getAttribute('auth_account_id');
+    public function listTransfers(Request $request, Response $response, array $args): Response {
+        $userId = (string) $request->getAttribute('auth_user_id');
+        $isOwner = (bool) $request->getAttribute('auth_is_owner');
         $businessId = (string) ($args['businessId'] ?? '');
+        $accountId = (string) $request->getAttribute('auth_account_id');
+
+        if (!$this->perms->hasPermission($userId, $isOwner, $businessId, 'transfers.manage')) {
+            return JsonResponder::error($response, 'You do not have permission to manage stock transfers.', 'FORBIDDEN', 403);
+        }
+
+        
 
         $stmt = $this->pdo->prepare("
             SELECT st.*, fb.name AS from_branch_name, tb.name AS to_branch_name
@@ -53,16 +62,20 @@ final class StockTransferController
         return JsonResponder::success($response, ['transfers' => $transfers]);
     }
 
-    public function dispatchTransfer(Request $request, Response $response, array $args): Response
-    {
+    public function dispatchTransfer(Request $request, Response $response, array $args): Response {
         $accountId = (string) $request->getAttribute('auth_account_id');
         $userId = (string) $request->getAttribute('auth_user_id');
         $businessId = (string) ($args['businessId'] ?? '');
         $body = (array) ($request->getParsedBody() ?? []);
-
         $fromBranch = trim((string) ($body['from_branch_id'] ?? ''));
         $toBranch = trim((string) ($body['to_branch_id'] ?? ''));
         $items = is_array($body['items'] ?? null) ? $body['items'] : [];
+        $isOwner = (bool) $request->getAttribute('auth_is_owner');
+
+        if (!$this->perms->hasPermission($userId, $isOwner, $businessId, 'transfers.manage')) {
+            return JsonResponder::error($response, 'You do not have permission to manage stock transfers.', 'FORBIDDEN', 403);
+        }
+
 
         if ($fromBranch === '' || $toBranch === '' || $fromBranch === $toBranch || empty($items)) {
             return JsonResponder::error($response, 'Select distinct source and destination branches with at least one item.', 'VALIDATION_ERROR', 422);
@@ -128,12 +141,17 @@ final class StockTransferController
         return JsonResponder::success($response, ['transfer_id' => $transferId], 201);
     }
 
-    public function confirmReceipt(Request $request, Response $response, array $args): Response
-    {
+    public function confirmReceipt(Request $request, Response $response, array $args): Response  {
         $accountId = (string) $request->getAttribute('auth_account_id');
         $userId = (string) $request->getAttribute('auth_user_id');
         $businessId = (string) ($args['businessId'] ?? '');
         $transferId = (string) ($args['transferId'] ?? '');
+        $isOwner = (bool) $request->getAttribute('auth_is_owner');
+
+        if (!$this->perms->hasPermission($userId, $isOwner, $businessId, 'transfers.manage')) {
+            return JsonResponder::error($response, 'You do not have permission to manage stock transfers.', 'FORBIDDEN', 403);
+        }
+
 
         $stmt = $this->pdo->prepare("SELECT * FROM stock_transfers WHERE id = :tid AND business_id = :bid LIMIT 1");
         $stmt->execute([':tid' => $transferId, ':bid' => $businessId]);

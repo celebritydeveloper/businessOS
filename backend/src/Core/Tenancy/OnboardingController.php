@@ -17,7 +17,8 @@ final class OnboardingController {
         private PDO $pdo,
         private CryptoService $crypto,
         private AuditLogger $audit,
-        private DefaultBusinessSeeder $seeder
+        private DefaultBusinessSeeder $seeder,
+        private PlanQuotaService $quotas
     ) {}
 
     public function onboardBusiness(Request $request, Response $response): Response {
@@ -213,19 +214,48 @@ final class OnboardingController {
         $uStmt = $this->pdo->prepare("SELECT id, account_id, full_name, email, phone, is_owner FROM users WHERE id = :uid LIMIT 1");
         $uStmt->execute([':uid' => $userId]);
         $user = $uStmt->fetch();
+        $isOwner = (int) ($user['is_owner'] ?? 0) === 1;
 
         $bStmt = $this->pdo->prepare("SELECT id, account_id, name, industry_type, is_vat_registered, default_vat_rate, currency FROM businesses WHERE account_id = :aid AND is_active = 1");
         $bStmt->execute([':aid' => $accountId]);
-        $businesses = $bStmt->fetchAll();
+        $allBusinesses = $bStmt->fetchAll();
 
-        foreach ($businesses as &$biz) {
+        $businesses = [];
+        foreach ($allBusinesses as $biz) {
             $biz['is_vat_registered'] = (bool) $biz['is_vat_registered'];
             $biz['default_vat_rate'] = (float) $biz['default_vat_rate'];
-            $brStmt = $this->pdo->prepare("SELECT id, business_id, name, address, phone FROM branches WHERE business_id = :bid AND is_active = 1");
-            $brStmt->execute([':bid' => $biz['id']]);
-            $biz['branches'] = $brStmt->fetchAll();
+
+            if ($isOwner) {
+                $brStmt = $this->pdo->prepare("SELECT id, business_id, name, address, phone FROM branches WHERE business_id = :bid AND is_active = 1 ORDER BY created_at ASC");
+
+                $brStmt->execute([':bid' => $biz['id']]);
+                $branches = array_map(static function (array $br): array {
+                    $br['permissions'] = ['*'];
+                    return $br;
+                }, $brStmt->fetchAll());
+            } else {
+                $brStmt = $this->pdo->prepare("
+                    SELECT br.id, br.business_id, br.name, br.address, br.phone,
+                           COALESCE(bro.name, ubr.role) AS role_name,
+                           bro.permissions_json
+                    FROM branches br
+                    INNER JOIN user_branch_roles ubr ON ubr.branch_id = br.id AND ubr.user_id = :uid
+                    LEFT JOIN business_roles bro ON bro.id = ubr.role_id
+                    WHERE br.business_id = :bid AND br.is_active = 1
+                ");
+                $brStmt->execute([':uid' => $userId, ':bid' => $biz['id']]);
+                $branches = array_map(static function (array $br): array {
+                    $br['permissions'] = json_decode((string) ($br['permissions_json'] ?? '[]'), true) ?: [];
+                    unset($br['permissions_json']);
+                    return $br;
+                }, $brStmt->fetchAll());
+            }
+
+            if (!empty($branches)) {
+                $biz['branches'] = $branches;
+                $businesses[] = $biz;
+            }
         }
-        unset($biz);
 
         $sStmt = $this->pdo->prepare("
             SELECT s.id, s.status, s.billing_cycle, s.trial_ends_at, s.current_period_end, s.grace_until, p.slug AS plan_slug
@@ -243,6 +273,7 @@ final class OnboardingController {
             'subscription' => $sub,
         ]);
     }
+
 
 
 
@@ -371,5 +402,135 @@ final class OnboardingController {
             'business_id' => $businessId,
             'branch_id'   => $branchId,
         ], 201);
+    }
+
+
+    public function addBusiness(Request $request, Response $response): Response {
+        $accountId = (string) $request->getAttribute('auth_account_id');
+        $userId = (string) $request->getAttribute('auth_user_id');
+        $isOwner = (bool) $request->getAttribute('auth_is_owner');
+        $body = (array) ($request->getParsedBody() ?? []);
+
+        if (!$isOwner) {
+            return JsonResponder::error($response, 'Only the account owner can create additional businesses.', 'FORBIDDEN', 403);
+        }
+
+        try {
+            $this->quotas->assertCanAddBusiness($accountId);
+        } catch (\RuntimeException $e) {
+            return JsonResponder::error($response, $e->getMessage(), 'QUOTA_EXCEEDED', 403);
+        }
+
+        $businessName = trim((string) ($body['business_name'] ?? ''));
+        $industryType = strtolower(trim((string) ($body['industry_type'] ?? 'retail')));
+        $branchName = trim((string) ($body['branch_name'] ?? 'Main Branch'));
+        $branchAddress = trim((string) ($body['branch_address'] ?? ''));
+        $branchPhone = trim((string) ($body['branch_phone'] ?? ''));
+
+        $allowedIndustries = ['retail', 'pharmacy', 'supermarket', 'laundry', 'restaurant', 'farm'];
+        if ($businessName === '' || !in_array($industryType, $allowedIndustries, true) || $branchName === '') {
+            return JsonResponder::error($response, 'Business name, valid industry, and initial branch name are required.', 'VALIDATION_ERROR', 422);
+        }
+
+        $regStatus = ($body['registration_status'] ?? 'unregistered') === 'registered' ? 'registered' : 'unregistered';
+        $regType = $regStatus === 'registered' ? trim((string) ($body['registration_type'] ?? 'BUSINESS_NAME')) : null;
+        $rcBnRaw = trim((string) ($body['rc_bn_number'] ?? ''));
+        $rcBnNumber = ($regStatus === 'registered' && $rcBnRaw !== '') ? substr($rcBnRaw, 0, 40) : null;
+        $isVatRegistered = ($regStatus === 'registered' && !empty($body['is_vat_registered'])) ? 1 : 0;
+        $vatRate = $isVatRegistered === 1 ? (float) ($body['default_vat_rate'] ?? 7.5) : 0.00;
+        $tinRaw = trim((string) ($body['tin_number'] ?? ''));
+        $encryptedTin = ($isVatRegistered === 1 && $tinRaw !== '') ? $this->crypto->encryptField($tinRaw) : null;
+
+        $businessId = Uuid::uuid4()->toString();
+        $branchId = Uuid::uuid4()->toString();
+
+        $this->pdo->beginTransaction();
+        try {
+            $this->pdo->prepare("
+                INSERT INTO businesses
+                (id, account_id, name, industry_type, registration_status, registration_type, rc_bn_number, is_vat_registered, encrypted_tin, default_vat_rate)
+                VALUES
+                (:id, :aid, :name, :ind, :rstat, :rtype, :rcbn, :vat, :tin, :vrate)
+            ")->execute([
+                ':id'    => $businessId,
+                ':aid'   => $accountId,
+                ':name'  => $businessName,
+                ':ind'   => $industryType,
+                ':rstat' => $regStatus,
+                ':rtype' => $regType,
+                ':rcbn'  => $rcBnNumber,
+                ':vat'   => $isVatRegistered,
+                ':tin'   => $encryptedTin,
+                ':vrate' => $vatRate,
+            ]);
+
+            $this->pdo->prepare("
+                INSERT INTO branches (id, business_id, name, address, phone)
+                VALUES (:id, :bid, :name, :addr, :phone)
+            ")->execute([
+                ':id'    => $branchId,
+                ':bid'   => $businessId,
+                ':name'  => $branchName,
+                ':addr'  => $branchAddress !== '' ? $branchAddress : null,
+                ':phone' => $branchPhone !== '' ? $branchPhone : null,
+            ]);
+
+            $this->seeder->seed($businessId, $industryType, $businessName);
+            $this->pdo->commit();
+        } catch (Throwable $e) {
+            $this->pdo->rollBack();
+            return JsonResponder::error($response, $e->getMessage(), 'BUSINESS_CREATE_ERROR', 422);
+        }
+
+        $this->audit->log($accountId, 'business.created', $userId, $businessId, $branchId, 'business', $businessId);
+        return JsonResponder::success($response, ['business_id' => $businessId, 'branch_id' => $branchId], 201);
+    }
+
+
+    public function addBranch(Request $request, Response $response): Response {
+        $accountId = (string) $request->getAttribute('auth_account_id');
+        $userId = (string) $request->getAttribute('auth_user_id');
+        $isOwner = (bool) $request->getAttribute('auth_is_owner');
+        $body = (array) ($request->getParsedBody() ?? []);
+
+        if (!$isOwner) {
+            return JsonResponder::error($response, 'Only the account owner can create additional branches.', 'FORBIDDEN', 403);
+        }
+
+        try {
+            $this->quotas->assertCanAddBranch($accountId);
+        } catch (\RuntimeException $e) {
+            return JsonResponder::error($response, $e->getMessage(), 'QUOTA_EXCEEDED', 403);
+        }
+
+        $businessId = trim((string) ($body['business_id'] ?? ''));
+        $branchName = trim((string) ($body['branch_name'] ?? ''));
+        $branchAddress = trim((string) ($body['branch_address'] ?? ''));
+        $branchPhone = trim((string) ($body['branch_phone'] ?? ''));
+
+        if ($businessId === '' || $branchName === '') {
+            return JsonResponder::error($response, 'Business and branch name are required.', 'VALIDATION_ERROR', 422);
+        }
+
+        $bizStmt = $this->pdo->prepare("SELECT id FROM businesses WHERE id = :bid AND account_id = :aid AND is_active = 1 LIMIT 1");
+        $bizStmt->execute([':bid' => $businessId, ':aid' => $accountId]);
+        if (!$bizStmt->fetch()) {
+            return JsonResponder::error($response, 'Business not found.', 'NOT_FOUND', 404);
+        }
+
+        $branchId = Uuid::uuid4()->toString();
+        $this->pdo->prepare("
+            INSERT INTO branches (id, business_id, name, address, phone)
+            VALUES (:id, :bid, :name, :addr, :phone)
+        ")->execute([
+            ':id'    => $branchId,
+            ':bid'   => $businessId,
+            ':name'  => $branchName,
+            ':addr'  => $branchAddress !== '' ? $branchAddress : null,
+            ':phone' => $branchPhone !== '' ? $branchPhone : null,
+        ]);
+
+        $this->audit->log($accountId, 'branch.created', $userId, $businessId, $branchId, 'branch', $branchId);
+        return JsonResponder::success($response, ['branch_id' => $branchId], 201);
     }
 }

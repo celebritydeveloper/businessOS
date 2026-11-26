@@ -35,7 +35,7 @@ final class JwtAuthMiddleware implements MiddlewareInterface {
             ->withAttribute('auth_user_id', $claims['sub'])
             ->withAttribute('auth_account_id', $claims['acc'])
             ->withAttribute('auth_session_id', $claims['sid'])
-            ->withAttribute('auth_is_owner', (bool) $claims['is_owner'])
+            ->withAttribute('auth_is_owner', filter_var($claims['is_owner'] ?? false, FILTER_VALIDATE_BOOLEAN))
             ->withAttribute('device_id', $deviceId);
 
         return $handler->handle($request);

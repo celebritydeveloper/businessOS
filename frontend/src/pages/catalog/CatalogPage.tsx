@@ -9,20 +9,29 @@ import { toast } from '../../shared/ui/ToastProvider';
 import { AddProductModal } from './AddProductModal';
 import { CatalogTable } from './CatalogTable';
 import { StockMovementModal } from './StockMovementModal';
+import { ProductViewModal } from './ProductViewModal';
+import { ProductEditModal } from './ProductEditModal';
+import { getIndustryCapabilities } from '../../core/config/industryCapabilities';
 
 export function CatalogPage() {
-  const { activeBusiness, activeBranch } = useAuth();
+  const { me, activeBusiness, activeBranch } = useAuth();
   const [items, setItems] = useState<CatalogItem[]>([]);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [batches, setBatches] = useState<ProductBatch[]>([]);
   const [loading, setLoading] = useState(true);
-
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [lowStockOnly, setLowStockOnly] = useState(false);
-
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [stockModalItem, setStockModalItem] = useState<CatalogItem | null>(null);
+  const isOwner = Boolean(me?.user.is_owner);
+  const branchPerms = activeBranch?.permissions || [];
+  const canAddCatalog = isOwner || branchPerms.includes('*') || branchPerms.includes('catalog.manage');
+  const canRestock = isOwner || branchPerms.includes('*') || branchPerms.includes('inventory.restock');
+  const [viewItem, setViewItem] = useState<CatalogItem | null>(null);
+  const [editItem, setEditItem] = useState<CatalogItem | null>(null);
+  const supportsBatchExpiry = getIndustryCapabilities(activeBusiness?.industry_type).supportsBatchExpiry;
+
 
   const isPharmacy = activeBusiness?.industry_type === 'pharmacy';
 
@@ -111,9 +120,9 @@ export function CatalogPage() {
           iconColorClass="text-emerald-600"
         />
         <StatCard
-          label={isPharmacy ? 'Expiring Batches (≤30d)' : 'Active Categories'}
-          value={isPharmacy ? stats.expiringSoon : categories.length}
-          subtitle={isPharmacy ? 'FEFO expiry watch active' : 'Industry default categories'}
+          label={supportsBatchExpiry ? 'Expiring Batches (≤30d)' : 'Active Categories'}
+          value={supportsBatchExpiry ? stats.expiringSoon : categories.length}
+          subtitle={supportsBatchExpiry ? 'FEFO expiry watch active' : 'Industry default categories'}
           icon={Pill}
         />
       </div>
@@ -151,8 +160,19 @@ export function CatalogPage() {
       {loading ? (
         <div className="p-10 text-center text-xs text-slate-500">Loading catalog &amp; branch inventory...</div>
       ) : (
-        <CatalogTable items={filteredItems} isPharmacy={isPharmacy} onOpenStockModal={setStockModalItem} />
+        <CatalogTable 
+          items={filteredItems} supportsBatchExpiry={supportsBatchExpiry} onOpenStockModal={setStockModalItem} canRestock={canRestock} 
+            onInspectItem={setViewItem}
+          />
       )}
+
+
+      <ProductViewModal
+        item={viewItem}
+        canEdit={canAddCatalog}
+        onClose={() => setViewItem(null)}
+        onStartEdit={(it) => { setViewItem(null); setEditItem(it); }}
+      />
 
       <AddProductModal
         open={addModalOpen}
@@ -170,6 +190,15 @@ export function CatalogPage() {
         branchId={activeBranch.id}
         onClose={() => setStockModalItem(null)}
         onRecorded={() => void loadCatalog()}
+      />
+
+
+      <ProductEditModal
+        item={editItem}
+        businessId={activeBusiness.id}
+        categories={categories}
+        onClose={() => setEditItem(null)}
+        onSaved={() => void loadCatalog()}
       />
     </div>
   );

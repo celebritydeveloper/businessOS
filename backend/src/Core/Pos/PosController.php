@@ -7,23 +7,22 @@ namespace App\Core\Pos;
 use App\Core\Http\JsonResponder;
 use App\Core\Inventory\InventoryLedgerService;
 use App\Core\Security\AuditLogger;
+use App\Core\Security\PermissionService;
 use PDO;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Ramsey\Uuid\Uuid;
 use Throwable;
 
-final class PosController
-{
+final class PosController {
     public function __construct(
         private PDO $pdo,
         private InventoryLedgerService $ledger,
-        private AuditLogger $audit
-    ) {
-    }
+        private AuditLogger $audit,
+        private PermissionService $perms
+    ) {}
 
-    public function listSales(Request $request, Response $response, array $args): Response
-    {
+    public function listSales(Request $request, Response $response, array $args): Response {
         $accountId = (string) $request->getAttribute('auth_account_id');
         $businessId = (string) ($args['businessId'] ?? '');
         $branchId = (string) ($args['branchId'] ?? '');
@@ -39,7 +38,6 @@ final class PosController
         ");
         $stmt->execute([':bid' => $businessId, ':brid' => $branchId, ':aid' => $accountId]);
         $sales = $stmt->fetchAll();
-
         $itemStmt = $this->pdo->prepare("SELECT * FROM sale_items WHERE sale_id = :sid");
         $payStmt = $this->pdo->prepare("SELECT * FROM sale_payments WHERE sale_id = :sid");
 
@@ -53,13 +51,20 @@ final class PosController
 
         return JsonResponder::success($response, ['sales' => $sales]);
     }
-    public function recordSale(Request $request, Response $response, array $args): Response
-    {
+
+
+    public function recordSale(Request $request, Response $response, array $args): Response  {
         $accountId = (string) $request->getAttribute('auth_account_id');
         $userId = (string) $request->getAttribute('auth_user_id');
         $businessId = (string) ($args['businessId'] ?? '');
         $branchId = (string) ($args['branchId'] ?? '');
         $body = (array) ($request->getParsedBody() ?? []);
+        $isOwner = (bool) $request->getAttribute('auth_is_owner');
+
+        if (!$this->perms->hasPermission($userId, $isOwner, $businessId, 'pos.sell')) {
+            return JsonResponder::error($response, 'You do not have permission to process POS sales.', 'FORBIDDEN', 403);
+        }
+
 
         $clientSaleUuid = trim((string) ($body['client_sale_uuid'] ?? ''));
         $items = is_array($body['items'] ?? null) ? $body['items'] : [];
@@ -196,8 +201,7 @@ final class PosController
         return JsonResponder::success($response, ['sale_id' => $saleId, 'receipt_number' => $receiptNumber], 201);
     }
 
-    private function postSaleJournal(string $businessId, string $branchId, string $saleId, string $receiptNo, string $postedAt, float $cashDebit, float $bankDebit, float $netSalesCredit, float $vatCredit, float $cogsAmount): void
-    {
+    private function postSaleJournal(string $businessId, string $branchId, string $saleId, string $receiptNo, string $postedAt, float $cashDebit, float $bankDebit, float $netSalesCredit, float $vatCredit, float $cogsAmount): void  {
         $entryId = Uuid::uuid4()->toString();
         $this->pdo->prepare("INSERT INTO journal_entries (id, business_id, branch_id, reference_type, reference_id, memo, posted_at) VALUES (:id, :bid, :brid, 'sale', :rid, :memo, :at)")
             ->execute([':id' => $entryId, ':bid' => $businessId, ':brid' => $branchId, ':rid' => $saleId, ':memo' => "POS Sale {$receiptNo}", ':at' => $postedAt]);

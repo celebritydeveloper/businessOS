@@ -1,8 +1,8 @@
-import { PackagePlus, Pill } from 'lucide-react';
+import { Eye, PackagePlus, Pill } from 'lucide-react';
 import { Button } from '../../shared/ui/Button';
 import type { CatalogTableProps } from './Catalog.types';
 
-export function CatalogTable({ items, isPharmacy, onOpenStockModal }: CatalogTableProps) {
+export function CatalogTable({ items, supportsBatchExpiry, canRestock, onOpenStockModal, onInspectItem }: CatalogTableProps) {
   if (items.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center text-xs text-slate-500">
@@ -36,7 +36,7 @@ export function CatalogTable({ items, isPharmacy, onOpenStockModal }: CatalogTab
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-slate-900">{item.name}</span>
-                      {isPharmacy && isBatchTracked && (
+                      {supportsBatchExpiry && isBatchTracked && (
                         <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-brand-50 text-brand-700 text-[10px] font-semibold">
                           <Pill className="w-2.5 h-2.5" /> Batch
                         </span>
@@ -73,11 +73,15 @@ export function CatalogTable({ items, isPharmacy, onOpenStockModal }: CatalogTab
                   </td>
 
                   <td className="py-3 px-4 text-right">
-                    {item.item_type === 'product' && (
+                    {canRestock && item.item_type === 'product' && (
                       <Button type="button" variant="secondary" onClick={() => onOpenStockModal(item)}>
                         <PackagePlus className="w-3.5 h-3.5" /> Restock
                       </Button>
                     )}
+
+                    <Button type="button" variant="secondary" onClick={() => onInspectItem(item)}>
+                      <Eye className="w-3.5 h-3.5" /> View
+                    </Button>
                   </td>
                 </tr>
               );

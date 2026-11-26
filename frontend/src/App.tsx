@@ -16,6 +16,10 @@ import { BatchExpiryPage } from './pages/catalog/BatchExpiryPage';
 import { StockTransfersPage } from './pages/catalog/StockTransfersPage';
 import { PosTerminalPage } from './pages/pos/PosTerminalPage';
 import { SalesHistoryPage } from './pages/pos/SalesHistoryPage';
+import { StaffManagementPage } from './pages/staff/StaffManagementPage';
+import { ActivityLogsPage } from './pages/staff/ActivityLogsPage';
+import { AcceptInvitePage } from './pages/auth/AcceptInvitePage';
+import { AccountingPage } from './pages/accounting/AccountingPage';
 
 function ComingSoonSection({ title }: { title: string }) {
   return (
@@ -44,6 +48,7 @@ function AppRoutes() {
       <Route path="/auth/register" element={me ? <Navigate to={hasBusiness ? '/dashboard' : '/onboarding'} replace /> : <RegisterPage />} />
       <Route path="/auth/verify-email" element={<VerifyEmailPage />} />
       <Route path="/auth/login" element={me ? <Navigate to={hasBusiness ? '/dashboard' : '/onboarding'} replace /> : <LoginPage />} />
+      <Route path="/auth/accept-invite" element={<AcceptInvitePage />} />
 
       <Route
         path="/onboarding"
@@ -65,10 +70,12 @@ function AppRoutes() {
         <Route path="transfers" element={<StockTransfersPage />} />
         <Route path="sales" element={<ComingSoonSection title="Sales & Receipts" />} />
         <Route path="batches" element={<ComingSoonSection title="Pharmacy Batch & Expiry" />} />
-        <Route path="staff" element={<ComingSoonSection title="Staff & PINs" />} />
-        <Route path="audit" element={<ComingSoonSection title="Activity Logs" />} />
+        <Route path="staff" element={<StaffManagementPage />} />
+        <Route path="audit" element={<ActivityLogsPage />} />
+        <Route path="accounting" element={<AccountingPage />} />
         <Route path="billing" element={<BillingManagementPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        
         <Route path="/dashboard/*" element={<Navigate to="/billing" replace />} />
       </Route>
 

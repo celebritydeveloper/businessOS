@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Core\Accounting\AccountingController;
 use App\Core\Auth\AuthController;
 use App\Core\Auth\SessionAuthService;
 use App\Core\Billing\BillingController;
@@ -14,13 +15,17 @@ use App\Core\Middleware\JwtAuthMiddleware;
 use App\Core\Middleware\SubscriptionGuardMiddleware;
 use App\Core\Notifications\MailerService;
 use App\Core\Pos\PosController;
+use App\Core\Security\AuditLogController;
 use App\Core\Security\AuditLogger;
 use App\Core\Security\CryptoService;
+use App\Core\Security\PermissionService;
 use App\Core\Security\RateLimiter;
 use App\Core\Tenancy\BrandingController;
+use App\Core\Tenancy\DashboardController;
 use App\Core\Tenancy\DefaultBusinessSeeder;
 use App\Core\Tenancy\OnboardingController;
 use App\Core\Tenancy\PlanQuotaService;
+use App\Core\Tenancy\StaffController;
 use DI\Container;
 
 return static function (): Container {
@@ -71,7 +76,8 @@ return static function (): Container {
         $c->get(PDO::class),
         $c->get(CryptoService::class),
         $c->get(AuditLogger::class),
-        $c->get(DefaultBusinessSeeder::class)
+        $c->get(DefaultBusinessSeeder::class),
+        $c->get(PlanQuotaService::class)
     ));
 
     $container->set(BillingController::class, static fn(Container $c): BillingController => new BillingController(
@@ -91,26 +97,55 @@ return static function (): Container {
         $c->get(PDO::class)
     ));
 
+    $container->set(PermissionService::class, static fn(Container $c): PermissionService => new PermissionService(
+        $c->get(PDO::class)
+    ));
+
     $container->set(CatalogController::class, static fn(Container $c): CatalogController => new CatalogController(
         $c->get(PDO::class),
         $c->get(InventoryLedgerService::class),
         $c->get(PlanQuotaService::class),
-        $c->get(AuditLogger::class)
+        $c->get(AuditLogger::class),
+        $c->get(PermissionService::class)
     ));
 
     $container->set(StockTransferController::class, static fn(Container $c): StockTransferController => new StockTransferController(
         $c->get(PDO::class),
         $c->get(InventoryLedgerService::class),
-        $c->get(AuditLogger::class)
+        $c->get(AuditLogger::class),
+        $c->get(PermissionService::class)
     ));
 
     $container->set(PosController::class, static fn(Container $c): PosController => new PosController(
         $c->get(PDO::class),
         $c->get(InventoryLedgerService::class),
-        $c->get(AuditLogger::class)
+        $c->get(AuditLogger::class),
+        $c->get(PermissionService::class)
     ));
 
+    $container->set(StaffController::class, static fn(Container $c): StaffController => new StaffController(
+        $c->get(PDO::class),
+        $c->get(PlanQuotaService::class),
+        $c->get(AuditLogger::class),
+        $c->get(MailerService::class),
+        $c->get(PermissionService::class)
+    ));
 
+    $container->set(AuditLogController::class, static fn(Container $c): AuditLogController => new AuditLogController(
+        $c->get(PDO::class),
+        $c->get(PermissionService::class)
+    ));
+
+    $container->set(AccountingController::class, static fn(Container $c): AccountingController => new AccountingController(
+        $c->get(PDO::class),
+        $c->get(AuditLogger::class),
+        $c->get(PermissionService::class)
+    ));
+
+    $container->set(DashboardController::class, static fn(Container $c): DashboardController => new DashboardController(
+        $c->get(PDO::class),
+        $c->get(PermissionService::class)
+    ));
 
 
     return $container;

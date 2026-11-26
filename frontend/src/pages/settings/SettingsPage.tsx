@@ -1,27 +1,25 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { CreditCard, Lock, Palette } from 'lucide-react';
 import { apiFetch } from '../../core/api/httpClient';
 import { useAuth } from '../../core/auth/AuthContext';
 import type { BrandingPlanControls, BrandingResponse, BusinessBranding, UpdateBrandingPayload } from '../../core/types';
-import { Button } from '../../shared/ui/Button';
-import { Input } from '../../shared/ui/Input';
 import { toast } from '../../shared/ui/ToastProvider';
-import { BrandingPreviewCard } from './BrandingPreviewCard';
-import { CustomDomainCard } from './CustomDomainCard';
-import { Link } from 'react-router-dom';
+import { BillingManagementPage } from '../billing/BillingManagementPage';
+import { BrandingSettingsTab } from './BrandingSettingsTab';
+import { MySecurityCard } from './MySecurityCard';
+import type { SettingsTabKey } from './Settings.types';
 
 export function SettingsPage() {
   const { me, activeBusiness } = useAuth();
+  const isOwner = Boolean(me?.user.is_owner);
   const isTrialing = me?.subscription?.status === 'trialing';
+
+  const [activeTab, setActiveTab] = useState<SettingsTabKey>(isOwner ? 'branding' : 'security');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [verifying, setVerifying] = useState(false);
-
   const [branding, setBranding] = useState<BusinessBranding | null>(null);
-  const [planControls, setPlanControls] = useState<BrandingPlanControls>({
-    show_powered_by: true,
-    custom_domain_enabled: false,
-  });
-
+  const [planControls, setPlanControls] = useState<BrandingPlanControls>({ show_powered_by: true, custom_domain_enabled: false });
   const [form, setForm] = useState<UpdateBrandingPayload>({
     app_name: '',
     logo_url: '',
@@ -63,7 +61,6 @@ export function SettingsPage() {
     e.preventDefault();
     if (!activeBusiness?.id) return;
     setSaving(true);
-
     const res = await apiFetch<{ branding: BusinessBranding }>(`/workspace/businesses/${activeBusiness.id}/branding`, {
       method: 'PUT',
       body: JSON.stringify(form),
@@ -74,7 +71,6 @@ export function SettingsPage() {
       toast.error(res.body.message || 'Could not update branding.', 'Save Failed');
       return;
     }
-
     setBranding(res.body.data.branding);
     toast.success('Business branding updated successfully.', 'Saved');
   };
@@ -82,161 +78,87 @@ export function SettingsPage() {
   const handleVerifyDomain = async () => {
     if (!activeBusiness?.id) return;
     setVerifying(true);
-    const res = await apiFetch<{ branding: BusinessBranding }>(
-      `/workspace/businesses/${activeBusiness.id}/branding/verify-domain`,
-      { method: 'POST' }
-    );
+    const res = await apiFetch<{ branding: BusinessBranding }>(`/workspace/businesses/${activeBusiness.id}/branding/verify-domain`, { method: 'POST' });
     setVerifying(false);
-
     if (!res.ok || !res.body.data) {
       toast.error(res.body.message || 'DNS verification failed.', 'Verification Pending');
       return;
     }
-
     setBranding(res.body.data.branding);
     toast.success('Custom domain verified and active!', 'White-Label Active');
   };
 
-  if (loading) {
-    return <div className="p-8 text-center text-xs text-slate-500">Loading business branding settings...</div>;
-  }
+  if (!activeBusiness) return null;
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Business Settings &amp; Branding</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Workspace &amp; Account Settings</h1>
         <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-          Configure receipt branding, customer support details, and custom domain white-labeling for{' '}
-          <strong>{activeBusiness?.name}</strong>.
+          Manage branding, personal login credentials, and subscription billing for <strong>{activeBusiness.name}</strong>.
         </p>
       </div>
 
-      {isTrialing && (
-        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <p className="text-xs text-amber-900 font-medium">
-            Customizing business branding is locked during your 24-hour free trial. Upgrade to a paid plan to unlock receipt &amp; app branding.
-          </p>
-          <Link
-            to="/dashboard/billing"
-            className="inline-flex items-center justify-center px-3.5 py-2 rounded-lg bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700 shrink-0"
+      {/* Tab Navigation */}
+      <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+        {isOwner && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('branding')}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer ${
+              activeTab === 'branding' ? 'bg-brand-600 text-white shadow-2xs' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+            }`}
           >
-            Upgrade Now
-          </Link>
-        </div>
+            <Palette className="w-3.5 h-3.5" /> Branding &amp; White-Label
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('security')}
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer ${
+            activeTab === 'security' ? 'bg-brand-600 text-white shadow-2xs' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+          }`}
+        >
+          <Lock className="w-3.5 h-3.5" /> My Security (Password &amp; PIN)
+        </button>
+
+        {isOwner && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('billing')}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer ${
+              activeTab === 'billing' ? 'bg-brand-600 text-white shadow-2xs' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <CreditCard className="w-3.5 h-3.5" /> Billing &amp; Plan
+          </button>
+        )}
+      </div>
+
+      {activeTab === 'branding' && isOwner && (
+        loading ? (
+          <div className="p-8 text-center text-xs text-slate-500">Loading branding settings...</div>
+        ) : (
+          <BrandingSettingsTab
+            businessId={activeBusiness.id}
+            businessName={activeBusiness.name}
+            isTrialing={isTrialing}
+            branding={branding}
+            planControls={planControls}
+            form={form}
+            saving={saving}
+            verifying={verifying}
+            onChangeForm={setForm}
+            onSave={(e) => void handleSave(e)}
+            onVerifyDomain={() => void handleVerifyDomain()}
+          />
+        )
       )}
 
+      {activeTab === 'security' && <MySecurityCard />}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <form onSubmit={handleSave} className="lg:col-span-2 space-y-5">
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-4">
-            <h2 className="text-sm font-bold text-slate-900">Brand Identity &amp; Receipt Details</h2>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input
-                label="Display / App Name"
-                placeholder="Apex Pharmacy"
-                value={form.app_name}
-                onChange={(e) => setForm({ ...form, app_name: e.target.value })}
-              />
-              <Input
-                label="Website URL"
-                placeholder="https://apexpharmacy.ng"
-                value={form.website}
-                onChange={(e) => setForm({ ...form, website: e.target.value })}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input
-                label="Logo Image URL"
-                placeholder="https://.../logo.png"
-                value={form.logo_url}
-                onChange={(e) => setForm({ ...form, logo_url: e.target.value })}
-              />
-              <Input
-                label="Favicon URL (Custom Domain)"
-                placeholder="https://.../favicon.ico"
-                value={form.favicon_url}
-                onChange={(e) => setForm({ ...form, favicon_url: e.target.value })}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-700">Primary Brand Color</label>
-                <div className="flex items-center gap-2.5">
-                  <input
-                    type="color"
-                    value={form.primary_color}
-                    onChange={(e) => setForm({ ...form, primary_color: e.target.value.toUpperCase() })}
-                    className="h-11 w-14 rounded-lg border border-slate-200 cursor-pointer"
-                  />
-                  <input
-                    type="text"
-                    value={form.primary_color}
-                    onChange={(e) => setForm({ ...form, primary_color: e.target.value.toUpperCase() })}
-                    className="flex-1 h-11 px-3 rounded-lg border border-slate-200 text-sm font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-700">Secondary / Header Color</label>
-                <div className="flex items-center gap-2.5">
-                  <input
-                    type="color"
-                    value={form.secondary_color}
-                    onChange={(e) => setForm({ ...form, secondary_color: e.target.value.toUpperCase() })}
-                    className="h-11 w-14 rounded-lg border border-slate-200 cursor-pointer"
-                  />
-                  <input
-                    type="text"
-                    value={form.secondary_color}
-                    onChange={(e) => setForm({ ...form, secondary_color: e.target.value.toUpperCase() })}
-                    className="flex-1 h-11 px-3 rounded-lg border border-slate-200 text-sm font-mono"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input
-                label="Support Email"
-                type="email"
-                placeholder="support@apexpharmacy.ng"
-                value={form.support_email}
-                onChange={(e) => setForm({ ...form, support_email: e.target.value })}
-              />
-              <Input
-                label="Support Phone"
-                type="tel"
-                placeholder="08012345678"
-                value={form.support_phone}
-                onChange={(e) => setForm({ ...form, support_phone: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <CustomDomainCard
-            customDomain={form.custom_domain || ''}
-            branding={branding}
-            enabledByPlan={planControls.custom_domain_enabled}
-            verifying={verifying}
-            onDomainChange={(val) => setForm({ ...form, custom_domain: val })}
-            onVerifyDomain={handleVerifyDomain}
-          />
-
-          <div className="flex justify-end">
-            <Button type="submit" disabled={isTrialing} isLoading={saving}>
-              Save Branding Settings
-            </Button>
-          </div>
-        </form>
-
-        <div>
-          <BrandingPreviewCard form={form} branding={branding} planControls={planControls} />
-        </div>
-      </div>
+      {activeTab === 'billing' && isOwner && <BillingManagementPage />}
     </div>
   );
 }

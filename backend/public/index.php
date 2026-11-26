@@ -16,6 +16,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
     exit;
 }
 
+use App\Core\Accounting\AccountingController;
 use App\Core\Auth\AuthController;
 use App\Core\Billing\BillingController;
 use App\Core\Http\JsonResponder;
@@ -25,8 +26,11 @@ use App\Core\Middleware\JwtAuthMiddleware;
 use App\Core\Middleware\SecurityHeadersMiddleware;
 use App\Core\Middleware\SubscriptionGuardMiddleware;
 use App\Core\Pos\PosController;
+use App\Core\Security\AuditLogController;
 use App\Core\Tenancy\BrandingController;
+use App\Core\Tenancy\DashboardController;
 use App\Core\Tenancy\OnboardingController;
+use App\Core\Tenancy\StaffController;
 use Dotenv\Dotenv;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
@@ -69,12 +73,14 @@ $app->group('/api/v1', function (RouteCollectorProxy $api): void {
     $api->post('/auth/resend-verification', [AuthController::class, 'resendVerification']);
     $api->post('/auth/login', [AuthController::class, 'login']);
     $api->post('/auth/refresh', [AuthController::class, 'refresh']);
+    $api->post('/auth/accept-invite', [StaffController::class, 'acceptInvite']);
 
     $api->post('/billing/webhook/{gateway}', [BillingController::class, 'handleWebhook']);
 
     $api->group('', function (RouteCollectorProxy $auth): void {
         $auth->post('/auth/logout', [AuthController::class, 'logout']);
         $auth->get('/me', [OnboardingController::class, 'me']);
+        $auth->patch('/me/security', [StaffController::class, 'updateOwnSecurity']);
         $auth->post('/onboarding/business', [OnboardingController::class, 'createInitialBusiness']);
         $auth->post('/billing/initialize', [BillingController::class, 'initializeCheckout']);
         $auth->get('/billing/verify', [BillingController::class, 'verifyCallback']);
@@ -88,13 +94,24 @@ $app->group('/api/v1', function (RouteCollectorProxy $api): void {
         $ws->put('/businesses/{businessId}/branding', [BrandingController::class, 'updateBranding']);
         $ws->post('/businesses/{businessId}/branding/verify-domain', [BrandingController::class, 'verifyDomain']);
         $ws->get('/businesses/{businessId}/branches/{branchId}/catalog', [CatalogController::class, 'listCatalog']);
+        $ws->get('/businesses/{businessId}/branches/{branchId}/overview', [DashboardController::class, 'getBranchOverview']);
+        $ws->get('/businesses/{businessId}/branches/{branchId}/sales', [PosController::class, 'listSales']);
+        $ws->post('/businesses/{businessId}/branches/{branchId}/sales', [PosController::class, 'recordSale']);
         $ws->post('/businesses/{businessId}/catalog', [CatalogController::class, 'createItem']);
+        $ws->put('/businesses/{businessId}/catalog/{itemId}', [CatalogController::class, 'updateItem']);
         $ws->post('/businesses/{businessId}/branches/{branchId}/stock-movements', [CatalogController::class, 'recordStockMovement']);
         $ws->get('/businesses/{businessId}/transfers', [StockTransferController::class, 'listTransfers']);
         $ws->post('/businesses/{businessId}/transfers', [StockTransferController::class, 'dispatchTransfer']);
         $ws->post('/businesses/{businessId}/transfers/{transferId}/receive', [StockTransferController::class, 'confirmReceipt']);
-        $ws->get('/businesses/{businessId}/branches/{branchId}/sales', [PosController::class, 'listSales']);
-        $ws->post('/businesses/{businessId}/branches/{branchId}/sales', [PosController::class, 'recordSale']);
+        $ws->get('/businesses/{businessId}/staff', [StaffController::class, 'listStaffAndRoles']);
+        $ws->post('/businesses/{businessId}/roles', [StaffController::class, 'createCustomRole']);
+        $ws->post('/businesses/{businessId}/staff', [StaffController::class, 'createStaff']);
+        $ws->get('/businesses/{businessId}/accounting', [AccountingController::class, 'getReports']);
+        $ws->post('/businesses/{businessId}/accounting/expenses', [AccountingController::class, 'recordExpense']);
+        $ws->patch('/staff/{userId}/pin', [StaffController::class, 'updateStaffPin']);
+        $ws->patch('/staff/{userId}/status', [StaffController::class, 'toggleStaffStatus']);
+        $ws->post('/branches/{branchId}/verify-pin', [StaffController::class, 'verifyPosPin']);
+        $ws->get('/businesses/{businessId}/audit-logs', [AuditLogController::class, 'listLogs']);
     })->add(SubscriptionGuardMiddleware::class)->add(JwtAuthMiddleware::class);
 
     $api->get('/public/branding', [BrandingController::class, 'resolvePublicBranding']);

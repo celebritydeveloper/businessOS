@@ -24,8 +24,7 @@ final class AuthController {
         private RateLimiter $rateLimiter,
         private AuditLogger $audit,
         private MailerService $mailer
-    ) {
-    }
+    ) {}
 
     private function clientIp(Request $request): string {
         return (string) ($request->getServerParams()['REMOTE_ADDR'] ?? '0.0.0.0');

@@ -42,6 +42,7 @@ export interface Branch {
   phone?: string | null;
   receipt_footer?: string | null;
   is_active?: boolean;
+  permissions?: string[];
 }
 
 export interface Business {

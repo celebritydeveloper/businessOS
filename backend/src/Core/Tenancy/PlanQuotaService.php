@@ -69,4 +69,16 @@ final class PlanQuotaService {
         $stmt->execute([':bid' => $businessId]);
         return (int) $stmt->fetchColumn() < $max;
     }
+
+    public function canAddStaffUser(string $accountId): bool {
+        $limits = $this->getActiveLimits($accountId);
+        $max = (int) ($limits['max_staff_users'] ?? 3);
+        if ($max >= 999) {
+            return true;
+        }
+
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM users WHERE account_id = :aid AND is_active = 1");
+        $stmt->execute([':aid' => $accountId]);
+        return (int) $stmt->fetchColumn() < $max;
+    }
 }

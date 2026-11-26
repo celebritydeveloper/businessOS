@@ -2,8 +2,10 @@ import type { CatalogItem, ProductBatch, ProductCategory } from '../../core/type
 
 export interface CatalogTableProps {
   items: CatalogItem[];
-  isPharmacy: boolean;
+  supportsBatchExpiry: boolean;
+  canRestock: boolean;
   onOpenStockModal: (item: CatalogItem) => void;
+  onInspectItem: (item: CatalogItem) => void;
 }
 
 export interface AddProductModalProps {

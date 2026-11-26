@@ -63,6 +63,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshProfile = async (): Promise<MePayload | null> => {
     const res = await apiFetch<MePayload>('/me');
+    const savedBizId = localStorage.getItem('bos_active_business_id');
+    const savedBranchId = localStorage.getItem('bos_active_branch_id')
     if (res.ok && res.body.data) {
       const profile = res.body.data;
       setMe(profile);
@@ -73,8 +75,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const nextBizId = activeBusinessId || firstBiz?.id || null;
       const nextBranchId = activeBranchId || firstBranch?.id || null;
 
-      setActiveBusinessId(nextBizId);
-      setActiveBranchId(nextBranchId);
+      setActiveBusinessId(savedBizId);
+      setActiveBranchId(savedBranchId);
+      
       await persistSnapshot(profile, nextBizId, nextBranchId);
       return profile;
     }
@@ -128,6 +131,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (me) {
       void persistSnapshot(me, businessId, branchId);
     }
+
+    localStorage.setItem('bos_active_business_id', businessId);
+    localStorage.setItem('bos_active_branch_id', branchId);
+
   };
 
   const logout = async () => {
