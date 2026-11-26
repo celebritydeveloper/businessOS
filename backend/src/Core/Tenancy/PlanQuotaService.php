@@ -57,4 +57,16 @@ final class PlanQuotaService {
             throw new RuntimeException("Plan limit reached: maximum {$max} branch(es) allowed.");
         }
     }
+
+    public function canAddCatalogItem(string $accountId, string $businessId): bool {
+        $limits = $this->getActiveLimits($accountId);
+        $max = (int) ($limits['max_catalog_items'] ?? 500);
+        if ($max >= 999999) {
+            return true;
+        }
+
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM catalog_items WHERE business_id = :bid AND is_active = 1");
+        $stmt->execute([':bid' => $businessId]);
+        return (int) $stmt->fetchColumn() < $max;
+    }
 }

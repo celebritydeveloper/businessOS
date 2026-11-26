@@ -11,6 +11,11 @@ import { SettingsPage } from './pages/settings/SettingsPage';
 import { PlanCheckoutPage } from './pages/billing/PlanCheckoutPage';
 import { BillingCallbackPage } from './pages/billing/BillingCallbackPage';
 import { BillingManagementPage } from './pages/billing/BillingManagementPage';
+import { CatalogPage } from './pages/catalog/CatalogPage';
+import { BatchExpiryPage } from './pages/catalog/BatchExpiryPage';
+import { StockTransfersPage } from './pages/catalog/StockTransfersPage';
+import { PosTerminalPage } from './pages/pos/PosTerminalPage';
+import { SalesHistoryPage } from './pages/pos/SalesHistoryPage';
 
 function ComingSoonSection({ title }: { title: string }) {
   return (
@@ -53,8 +58,11 @@ function AppRoutes() {
         element={!me ? <Navigate to="/auth/login" replace /> : !hasBusiness ? <Navigate to="/onboarding" replace /> : <WorkspaceLayout />}
       >
         <Route index element={<DashboardHomePage />} />
-        <Route path="pos" element={<ComingSoonSection title="POS Terminal" />} />
-        <Route path="catalog" element={<ComingSoonSection title="Catalog & Inventory" />} />
+        <Route path="pos" element={<PosTerminalPage />} />
+        <Route path="sales" element={<SalesHistoryPage />} />
+        <Route path="catalog" element={<CatalogPage />} />
+        <Route path="batches" element={<BatchExpiryPage />} />
+        <Route path="transfers" element={<StockTransfersPage />} />
         <Route path="sales" element={<ComingSoonSection title="Sales & Receipts" />} />
         <Route path="batches" element={<ComingSoonSection title="Pharmacy Batch & Expiry" />} />
         <Route path="staff" element={<ComingSoonSection title="Staff & PINs" />} />

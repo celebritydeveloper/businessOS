@@ -7,9 +7,13 @@ use App\Core\Auth\SessionAuthService;
 use App\Core\Billing\BillingController;
 use App\Core\Billing\Gateways\FlutterwaveGateway;
 use App\Core\Billing\Gateways\PaystackGateway;
+use App\Core\Inventory\CatalogController;
+use App\Core\Inventory\InventoryLedgerService;
+use App\Core\Inventory\StockTransferController;
 use App\Core\Middleware\JwtAuthMiddleware;
 use App\Core\Middleware\SubscriptionGuardMiddleware;
 use App\Core\Notifications\MailerService;
+use App\Core\Pos\PosController;
 use App\Core\Security\AuditLogger;
 use App\Core\Security\CryptoService;
 use App\Core\Security\RateLimiter;
@@ -86,6 +90,27 @@ return static function (): Container {
     $container->set(InventoryLedgerService::class, static fn(Container $c): InventoryLedgerService => new InventoryLedgerService(
         $c->get(PDO::class)
     ));
+
+    $container->set(CatalogController::class, static fn(Container $c): CatalogController => new CatalogController(
+        $c->get(PDO::class),
+        $c->get(InventoryLedgerService::class),
+        $c->get(PlanQuotaService::class),
+        $c->get(AuditLogger::class)
+    ));
+
+    $container->set(StockTransferController::class, static fn(Container $c): StockTransferController => new StockTransferController(
+        $c->get(PDO::class),
+        $c->get(InventoryLedgerService::class),
+        $c->get(AuditLogger::class)
+    ));
+
+    $container->set(PosController::class, static fn(Container $c): PosController => new PosController(
+        $c->get(PDO::class),
+        $c->get(InventoryLedgerService::class),
+        $c->get(AuditLogger::class)
+    ));
+
+
 
 
     return $container;

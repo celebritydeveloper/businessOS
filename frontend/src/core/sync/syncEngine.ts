@@ -50,6 +50,26 @@ class SyncEngine {
     this.update({ pendingCount, conflictCount });
   }
 
+
+  async enqueue(businessId: string, branchId: string, eventType: 'sale.created' | 'inventory.adjusted' | 'audit.logged', payload: Record<string, unknown>): Promise<void> {
+    await localDb.syncOutbox.add({
+      id: crypto.randomUUID(),
+      branchId,
+      eventType,
+      payloadJson: JSON.stringify({ ...payload, businessId, branchId }),
+      status: 'pending',
+      occurredAt: new Date().toISOString(),
+      retryCount: 0,
+    });
+    await this.refreshCounts();
+  }
+
+
+
+
+
+
+
   async flushOutbox(): Promise<void> {
     if (!this.state.isOnline || this.state.isSyncing) return;
 

@@ -1,34 +1,36 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'ghost';
-  fullWidth?: boolean;
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   isLoading?: boolean;
+  fullWidth?: boolean;
   children: ReactNode;
 }
 
 export function Button({
   variant = 'primary',
-  fullWidth = false,
   isLoading = false,
-  disabled,
-  className = '',
+  fullWidth = false,
   children,
-  ...props
+  className = '',
+  disabled,
+  ...rest
 }: ButtonProps) {
-  const base = 'inline-flex items-center justify-center gap-2 rounded-lg px-4 h-11 text-sm font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-brand-600/30 disabled:opacity-55 disabled:cursor-not-allowed cursor-pointer';
+  const base =
+    'inline-flex items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer h-11 px-5';
 
   const variants = {
-    primary: 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm active:scale-[0.99]',
-    secondary: 'bg-white text-slate-800 border border-slate-300 hover:bg-slate-50',
-    ghost: 'bg-transparent text-brand-600 hover:bg-brand-50',
+    primary: 'bg-brand-600 text-white hover:bg-brand-700 focus:ring-brand-600 shadow-xs',
+    secondary: 'bg-white text-slate-800 border border-slate-200 hover:bg-slate-50 focus:ring-slate-300',
+    ghost: 'bg-transparent text-slate-600 hover:bg-slate-100 focus:ring-slate-300',
+    danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-600 shadow-xs',
   };
 
   return (
     <button
-      disabled={disabled || isLoading}
       className={`${base} ${variants[variant]} ${fullWidth ? 'w-full' : ''} ${className}`}
-      {...props}
+      disabled={disabled || isLoading}
+      {...rest}
     >
       {isLoading && (
         <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />

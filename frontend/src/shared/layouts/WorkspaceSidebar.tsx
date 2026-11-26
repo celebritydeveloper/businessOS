@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   Activity,
+  ArrowLeftRight,
   ChevronLeft,
   ChevronRight,
   CreditCard,
@@ -27,6 +28,8 @@ export function WorkspaceSidebar({
   const { me, activeBusiness, activeBranch, setActiveBranch } = useAuth();
   const isOwner = Boolean(me?.user.is_owner);
   const isPharmacy = activeBusiness?.industry_type === 'pharmacy';
+  const hasMultipleBranches = (activeBusiness?.branches.length ?? 0) > 1;
+
 
 
   const navItems: SidebarNavItem[] = [
@@ -43,6 +46,10 @@ export function WorkspaceSidebar({
     ...(isOwner
       ? [{ id: 'billing', label: 'Billing & Plan', path: '/dashboard/billing', icon: CreditCard, section: 'admin' as const }]
       : []),
+    ...(hasMultipleBranches
+      ? [{ id: 'transfers', label: 'Stock Transfers', path: '/dashboard/transfers', icon: ArrowLeftRight, section: 'core' as const }]
+      : []),
+
   ];
 
 
@@ -50,9 +57,7 @@ export function WorkspaceSidebar({
 
   const sidebarContent = (
     <aside
-      className={`h-full bg-white border-r border-slate-200 flex flex-col transition-all duration-200 ${
-        collapsed ? 'w-[76px]' : 'w-64'
-      }`}
+      className={`h-full bg-white border-r border-slate-200 flex flex-col transition-all duration-200 ${collapsed ? 'w-[76px]' : 'w-64'}`}
     >
       {/* Top Logo + Collapse Toggle */}
       <div className="h-16 px-4 border-b border-slate-100 flex items-center justify-between shrink-0">

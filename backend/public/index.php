@@ -19,9 +19,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
 use App\Core\Auth\AuthController;
 use App\Core\Billing\BillingController;
 use App\Core\Http\JsonResponder;
+use App\Core\Inventory\CatalogController;
+use App\Core\Inventory\StockTransferController;
 use App\Core\Middleware\JwtAuthMiddleware;
 use App\Core\Middleware\SecurityHeadersMiddleware;
 use App\Core\Middleware\SubscriptionGuardMiddleware;
+use App\Core\Pos\PosController;
 use App\Core\Tenancy\BrandingController;
 use App\Core\Tenancy\OnboardingController;
 use Dotenv\Dotenv;
@@ -84,6 +87,14 @@ $app->group('/api/v1', function (RouteCollectorProxy $api): void {
         $ws->get('/businesses/{businessId}/branding', [BrandingController::class, 'getBranding']);
         $ws->put('/businesses/{businessId}/branding', [BrandingController::class, 'updateBranding']);
         $ws->post('/businesses/{businessId}/branding/verify-domain', [BrandingController::class, 'verifyDomain']);
+        $ws->get('/businesses/{businessId}/branches/{branchId}/catalog', [CatalogController::class, 'listCatalog']);
+        $ws->post('/businesses/{businessId}/catalog', [CatalogController::class, 'createItem']);
+        $ws->post('/businesses/{businessId}/branches/{branchId}/stock-movements', [CatalogController::class, 'recordStockMovement']);
+        $ws->get('/businesses/{businessId}/transfers', [StockTransferController::class, 'listTransfers']);
+        $ws->post('/businesses/{businessId}/transfers', [StockTransferController::class, 'dispatchTransfer']);
+        $ws->post('/businesses/{businessId}/transfers/{transferId}/receive', [StockTransferController::class, 'confirmReceipt']);
+        $ws->get('/businesses/{businessId}/branches/{branchId}/sales', [PosController::class, 'listSales']);
+        $ws->post('/businesses/{businessId}/branches/{branchId}/sales', [PosController::class, 'recordSale']);
     })->add(SubscriptionGuardMiddleware::class)->add(JwtAuthMiddleware::class);
 
     $api->get('/public/branding', [BrandingController::class, 'resolvePublicBranding']);
