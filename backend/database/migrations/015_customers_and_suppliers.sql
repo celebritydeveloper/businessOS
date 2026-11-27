@@ -54,8 +54,10 @@ CREATE TABLE IF NOT EXISTS `contact_transactions` (
 
 ALTER TABLE `sales`
     ADD COLUMN `customer_id` CHAR(36) NULL AFTER `cashier_user_id`,
-    MODIFY COLUMN `payment_method` ENUM('cash', 'pos_card', 'transfer', 'credit') NOT NULL DEFAULT 'cash',
     ADD INDEX `idx_sales_customer` (`customer_id`);
+
+ALTER TABLE `sale_payments`
+    MODIFY COLUMN `method` ENUM('cash', 'pos_card', 'transfer', 'credit') NOT NULL DEFAULT 'cash';
 
 INSERT IGNORE INTO `chart_of_accounts` (`id`, `business_id`, `code`, `name`, `account_type`, `normal_balance`, `description`, `is_system`)
 SELECT UUID(), `id`, '1100', 'Accounts Receivable (Customer Credit)', 'asset', 'debit', 'Unpaid customer credit sales balances', 1
