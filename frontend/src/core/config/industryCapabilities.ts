@@ -3,6 +3,7 @@ import type { IndustryType } from '../types';
 export interface IndustryCapabilityConfig {
   supportsBatchExpiry: boolean;
   supportsFarmCycles: boolean;
+  supportsProjects: boolean;
   defaultItemType: 'product' | 'service';
   defaultUnitLabel: string;
   defaultVatExempt: boolean;
@@ -12,6 +13,7 @@ const CAPABILITIES: Record<IndustryType, IndustryCapabilityConfig> = {
   pharmacy: {
     supportsBatchExpiry: true,
     supportsFarmCycles: false,
+    supportsProjects: false,
     defaultItemType: 'product',
     defaultUnitLabel: 'Bag',
     defaultVatExempt: true,
@@ -19,6 +21,7 @@ const CAPABILITIES: Record<IndustryType, IndustryCapabilityConfig> = {
   supermarket: {
     supportsBatchExpiry: true,
     supportsFarmCycles: false,
+    supportsProjects: false,
     defaultItemType: 'product',
     defaultUnitLabel: 'Piece',
     defaultVatExempt: false,
@@ -26,6 +29,7 @@ const CAPABILITIES: Record<IndustryType, IndustryCapabilityConfig> = {
   retail: {
     supportsBatchExpiry: false,
     supportsFarmCycles: false,
+    supportsProjects: false,
     defaultItemType: 'product',
     defaultUnitLabel: 'Piece',
     defaultVatExempt: false,
@@ -33,6 +37,7 @@ const CAPABILITIES: Record<IndustryType, IndustryCapabilityConfig> = {
   restaurant: {
     supportsBatchExpiry: false,
     supportsFarmCycles: false,
+    supportsProjects: false,
     defaultItemType: 'product',
     defaultUnitLabel: 'Plate',
     defaultVatExempt: false,
@@ -40,6 +45,7 @@ const CAPABILITIES: Record<IndustryType, IndustryCapabilityConfig> = {
   laundry: {
     supportsBatchExpiry: false,
     supportsFarmCycles: false,
+    supportsProjects: false,
     defaultItemType: 'service',
     defaultUnitLabel: 'Item',
     defaultVatExempt: false,
@@ -48,12 +54,14 @@ const CAPABILITIES: Record<IndustryType, IndustryCapabilityConfig> = {
     supportsBatchExpiry: true,
     supportsFarmCycles: true,
     defaultItemType: 'product',
+    supportsProjects: false,
     defaultUnitLabel: 'Bag',
     defaultVatExempt: true,
   },
   creative: {
     supportsBatchExpiry: false,
     supportsFarmCycles: false,
+    supportsProjects: true,
     defaultItemType: 'service',
     defaultUnitLabel: 'Project',
     defaultVatExempt: false,

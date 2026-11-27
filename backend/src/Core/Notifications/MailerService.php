@@ -100,4 +100,33 @@ final class MailerService
             error_log('[MailerService Invite Error] ' . $e->getMessage());
         }
     }
+
+    public function sendTransactionalHtml(string $toEmail, string $toName, string $fromName, string $subject, string $htmlBody, string $plainText): void  {
+        $driver = strtolower((string) ($_ENV['MAIL_DRIVER'] ?? ($this->appEnv === 'local' ? 'log' : 'smtp')));
+        if ($driver === 'log') {
+            $logLine = sprintf("[%s] TO: %s (%s) | FROM: %s | SUBJ: %s | %s\n", gmdate('Y-m-d H:i:s'), $toEmail, $toName, $fromName, $subject, $plainText);
+            @file_put_contents(__DIR__ . '/../../../storage/logs/mail.log', $logLine, FILE_APPEND);
+            return;
+        }
+
+        $mail = new PHPMailer(true);
+        try {
+            $mail->isSMTP();
+            $mail->Host       = (string) ($_ENV['MAIL_HOST'] ?? '');
+            $mail->SMTPAuth   = true;
+            $mail->Username   = (string) ($_ENV['MAIL_USERNAME'] ?? '');
+            $mail->Password   = (string) ($_ENV['MAIL_PASSWORD'] ?? '');
+            $mail->SMTPSecure = ($_ENV['MAIL_ENCRYPTION'] ?? 'tls') === 'ssl' ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->Port       = (int) ($_ENV['MAIL_PORT'] ?? 587);
+            $mail->setFrom((string) ($_ENV['MAIL_FROM_ADDRESS'] ?? 'noreply@businessos.app'), $fromName);
+            $mail->addAddress($toEmail, $toName);
+            $mail->isHTML(true);
+            $mail->Subject = $subject;
+            $mail->Body    = $htmlBody;
+            $mail->AltBody = $plainText;
+            $mail->send();
+        } catch (Throwable $e) {
+            error_log('[MailerService Project Email Error] ' . $e->getMessage());
+        }
+    }
 }

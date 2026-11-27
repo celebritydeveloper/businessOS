@@ -15,6 +15,11 @@ use App\Core\Contacts\CustomerController;
 use App\Core\Contacts\CustomerService;
 use App\Core\Contacts\SupplierController;
 use App\Core\Contacts\SupplierService;
+use App\Core\Creative\ClientPortalController;
+use App\Core\Creative\CreativeBillingService;
+use App\Core\Creative\CreativeProjectController;
+use App\Core\Creative\CreativeProjectService;
+use App\Core\Creative\ProjectClientNotifier;
 use App\Core\Inventory\CatalogController;
 use App\Core\Inventory\InventoryLedgerService;
 use App\Core\Inventory\StockTransferController;
@@ -196,8 +201,29 @@ return static function (): Container {
         $c->get(AuditLogger::class)
     ));
 
+    
+    $container->set(CreativeProjectService::class, static fn(Container $c): CreativeProjectService => new CreativeProjectService($c->get(PDO::class)));
+    $container->set(CreativeBillingService::class, static fn(Container $c): CreativeBillingService => new CreativeBillingService($c->get(PDO::class)));
+    $container->set(CreativeProjectController::class, static fn(Container $c): CreativeProjectController => new CreativeProjectController(
+        $c->get(CreativeProjectService::class),
+        $c->get(CreativeBillingService::class),
+        $c->get(PermissionService::class),
+        $c->get(AuditLogger::class),
+        $c->get(ProjectClientNotifier::class)
+    ));
+    $container->set(ClientPortalController::class, static fn(Container $c): ClientPortalController => new ClientPortalController(
+        $c->get(PDO::class)
+    ));
+
+    $container->set(ProjectClientNotifier::class, static fn(Container $c): ProjectClientNotifier => new ProjectClientNotifier(
+        $c->get(PDO::class),
+        $c->get(MailerService::class)
+    ));
+
+ 
 
 
 
-    return $container;
+
+return $container;
 };

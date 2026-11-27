@@ -3,21 +3,11 @@ import {
   Activity,
   ArrowLeftRight,
   BookOpen,
+  Briefcase,
   ChevronLeft,
   ChevronRight,
   CreditCard,
-  LayoutDashboard,
-  Package,
-  Pill,
-  Receipt,
-  Settings,
-  ShoppingCart,
-  Sprout,
-  Truck,
-  UserCheck,
-  Users,
-  X,
-} from 'lucide-react';
+  LayoutDashboard, Package, Pill, Receipt, Settings, ShoppingCart, Sprout, Truck, UserCheck, Users, X} from 'lucide-react';
 import { useAuth } from '../../core/auth/AuthContext';
 import { getIndustryCapabilities } from '../../core/config/industryCapabilities';
 import { BrandLogo } from '../ui/BrandLogo';
@@ -39,46 +29,23 @@ export function WorkspaceSidebar({
   const hasMultipleBranches = (activeBusiness?.branches.length ?? 0) > 1;
 
   const navItems: SidebarNavItem[] = [
-    ...(can('dashboard.view')
-      ? [{ id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, section: 'core' as const }]
-      : []),
-    ...(can('pos.sell')
-      ? [{ id: 'pos', label: 'POS Terminal', path: '/dashboard/pos', icon: ShoppingCart, section: 'core' as const }]
-      : []),
-    ...(can('catalog.manage') || can('inventory.restock')
-      ? [{ id: 'catalog', label: 'Catalog & Stock', path: '/dashboard/catalog', icon: Package, section: 'core' as const }]
-      : []),
-    ...(hasMultipleBranches && can('transfers.manage')
-      ? [{ id: 'transfers', label: 'Stock Transfers', path: '/dashboard/transfers', icon: ArrowLeftRight, section: 'core' as const }]
-      : []),
-    ...(can('sales.view')
-      ? [{ id: 'sales', label: 'Sales & Receipts', path: '/dashboard/sales', icon: Receipt, section: 'core' as const }]
-      : []),
+    ...(can('dashboard.view') ? [{ id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, section: 'core' as const }] : []),
+    ...(can('pos.sell') ? [{ id: 'pos', label: 'POS Terminal', path: '/dashboard/pos', icon: ShoppingCart, section: 'core' as const }] : []),
+    ...(can('catalog.manage') || can('inventory.restock') ? [{ id: 'catalog', label: 'Catalog & Stock', path: '/dashboard/catalog', icon: Package, section: 'core' as const }] : []),
+    ...(hasMultipleBranches && can('transfers.manage') ? [{ id: 'transfers', label: 'Stock Transfers', path: '/dashboard/transfers', icon: ArrowLeftRight, section: 'core' as const }] : []),
+    ...(can('sales.view') ? [{ id: 'sales', label: 'Sales & Receipts', path: '/dashboard/sales', icon: Receipt, section: 'core' as const }] : []),
     ...(can('contacts.manage')
-      ? [
-          { id: 'customers', label: 'Customers', path: '/dashboard/customers', icon: UserCheck, section: 'contacts' as const },
+      ? [{ id: 'customers', label: 'Customers', path: '/dashboard/customers', icon: UserCheck, section: 'contacts' as const },
           { id: 'suppliers', label: 'Suppliers', path: '/dashboard/suppliers', icon: Truck, section: 'contacts' as const },
-        ]
-      : []),
-    ...(capabilities.supportsFarmCycles && can('farm.manage')
-      ? [{ id: 'farm-cycles', label: 'Farm Cycles', path: '/dashboard/farm-cycles', icon: Sprout, section: 'industry' as const }]
-      : []),
-    ...(capabilities.supportsBatchExpiry && can('batches.manage')
-      ? [{ id: 'batches', label: 'Batch & Expiry', path: '/dashboard/batches', icon: Pill, section: 'industry' as const }]
-      : []),
-    ...(can('staff.manage')
-      ? [{ id: 'staff', label: 'Staff & PINs', path: '/dashboard/staff', icon: Users, section: 'admin' as const }]
-      : []),
-    ...(can('audit.view')
-      ? [{ id: 'audit', label: 'Activity Logs', path: '/dashboard/audit', icon: Activity, section: 'admin' as const }]
-      : []),
-    ...(can('accounting.view')
-      ? [{ id: 'accounting', label: 'Accounting & P&L', path: '/dashboard/accounting', icon: BookOpen, section: 'admin' as const }]
-      : []),
+        ] : []),
+    ...(capabilities.supportsFarmCycles && can('farm.manage') ? [{ id: 'farm-cycles', label: 'Farm Cycles', path: '/dashboard/farm-cycles', icon: Sprout, section: 'industry' as const }] : []),
+    ...(capabilities.supportsProjects && can('projects.manage') ? [{ id: 'projects', label: 'Projects & Retainers', path: '/dashboard/projects', icon: Briefcase, section: 'industry' as const }] : []),
+    ...(capabilities.supportsBatchExpiry && can('batches.manage') ? [{ id: 'batches', label: 'Batch & Expiry', path: '/dashboard/batches', icon: Pill, section: 'industry' as const }] : []),
+    ...(can('staff.manage') ? [{ id: 'staff', label: 'Staff & PINs', path: '/dashboard/staff', icon: Users, section: 'admin' as const }] : []),
+    ...(can('audit.view') ? [{ id: 'audit', label: 'Activity Logs', path: '/dashboard/audit', icon: Activity, section: 'admin' as const }] : []),
+    ...(can('accounting.view') ? [{ id: 'accounting', label: 'Accounting & P&L', path: '/dashboard/accounting', icon: BookOpen, section: 'admin' as const }] : []),
     { id: 'settings', label: 'Settings', path: '/dashboard/settings', icon: Settings, section: 'admin' },
-    ...(can('billing.manage')
-      ? [{ id: 'billing', label: 'Billing & Plan', path: '/dashboard/billing', icon: CreditCard, section: 'admin' as const }]
-      : []),
+    ...(can('billing.manage') ? [{ id: 'billing', label: 'Billing & Plan', path: '/dashboard/billing', icon: CreditCard, section: 'admin' as const }] : []),
   ];
 
   const sections: Array<{ key: SidebarNavItem['section']; label: string }> = [
@@ -133,9 +100,7 @@ export function WorkspaceSidebar({
                 <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                   {sec.label}
                 </p>
-              ) : (
-                sec.key !== 'core' && <div className="border-t border-slate-100 my-1.5" />
-              )}
+              ) : (sec.key !== 'core' && <div className="border-t border-slate-100 my-1.5" />)}
 
               {items.map((item) => {
                 const Icon = item.icon;
@@ -169,7 +134,6 @@ export function WorkspaceSidebar({
   return (
     <>
       <div className="hidden lg:block h-full shrink-0">{sidebarContent}</div>
-
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden flex">
           <div className="fixed inset-0 bg-slate-900/40" onClick={onCloseMobile} />

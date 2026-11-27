@@ -3,6 +3,16 @@ const TOKEN_STORAGE_KEY = 'bos_access_token';
 let inMemoryAccessToken: string | null = typeof localStorage !== 'undefined' ? localStorage.getItem(TOKEN_STORAGE_KEY) : null;
 let refreshPromise: Promise<string | null> | null = null;
 
+const PUBLIC_AUTH_PATHS = ['/login', '/register', '/verify-email', '/accept-invite', '/'];
+
+function redirectToLoginIfNeeded(): void {
+  if (typeof window === 'undefined') return;
+  const currentPath = window.location.pathname;
+  if (!PUBLIC_AUTH_PATHS.includes(currentPath) && !currentPath.startsWith('/track/')) {
+    window.location.replace('/login');
+  }
+}
+
 export function setAccessToken(token: string | null): void {
   inMemoryAccessToken = token;
   if (typeof localStorage === 'undefined') return;
@@ -48,6 +58,7 @@ async function refreshAccessToken(): Promise<string | null> {
         setAccessToken(nextToken);
         return nextToken;
       } catch {
+        setAccessToken(null);
         return null;
       } finally {
         refreshPromise = null;
@@ -65,7 +76,11 @@ export interface ApiResponse<T = unknown> {
   details?: Record<string, unknown>;
 }
 
-export async function apiFetch<T = unknown>(path: string, options: RequestInit = {}, retryOn401 = true): Promise<{ ok: boolean; status: number; body: ApiResponse<T> }> {
+export async function apiFetch<T = unknown>(
+  path: string,
+  options: RequestInit = {},
+  retryOn401 = true
+): Promise<{ ok: boolean; status: number; body: ApiResponse<T> }> {
   const method = (options.method || 'GET').toUpperCase();
   const headers = new Headers(options.headers || {});
   headers.set('Content-Type', 'application/json');
@@ -97,13 +112,14 @@ export async function apiFetch<T = unknown>(path: string, options: RequestInit =
     };
   }
 
-
   if (res.status === 401 && retryOn401 && !path.startsWith('/auth/')) {
     const newToken = await refreshAccessToken();
     if (newToken) {
       return apiFetch<T>(path, options, false);
     }
+    setAccessToken(null);
     window.dispatchEvent(new CustomEvent('bos:session-expired'));
+    redirectToLoginIfNeeded();
   }
 
   if (res.status === 402) {

@@ -23,6 +23,8 @@ use App\Core\Billing\BillingController;
 use App\Core\Contacts\ContactsController;
 use App\Core\Contacts\CustomerController;
 use App\Core\Contacts\SupplierController;
+use App\Core\Creative\ClientPortalController;
+use App\Core\Creative\CreativeProjectController;
 use App\Core\Http\JsonResponder;
 use App\Core\Inventory\CatalogController;
 use App\Core\Inventory\StockTransferController;
@@ -81,6 +83,7 @@ $app->group('/api/v1', function (RouteCollectorProxy $api): void {
     $api->get('/health', function (Request $req, Response $res): Response {
         return JsonResponder::success($res, ['status' => 'ok']);
     });
+    $api->get('/public/projects/{token}', [ClientPortalController::class, 'showByToken']);
     $api->get('/plans', [BillingController::class, 'listPlans']);
     $api->post('/auth/register', [AuthController::class, 'register']);
     $api->post('/auth/verify-email', [AuthController::class, 'verifyEmail']);
@@ -89,6 +92,7 @@ $app->group('/api/v1', function (RouteCollectorProxy $api): void {
     $api->post('/auth/refresh', [AuthController::class, 'refresh']);
     $api->post('/auth/accept-invite', [StaffController::class, 'acceptInvite']);
     $api->post('/billing/webhook/{gateway}', [BillingController::class, 'handleWebhook']);
+    
 
     $api->group('', function (RouteCollectorProxy $auth): void {
         $auth->post('/auth/logout', [AuthController::class, 'logout']);
@@ -141,6 +145,16 @@ $app->group('/api/v1', function (RouteCollectorProxy $api): void {
         $ws->post('/businesses/{businessId}/suppliers', [SupplierController::class, 'create']);
         $ws->patch('/businesses/{businessId}/suppliers/{supplierId}', [SupplierController::class, 'update']);
         $ws->post('/businesses/{businessId}/suppliers/{supplierId}/transactions', [SupplierController::class, 'recordTransaction']);
+
+       
+
+        $ws->get('/businesses/{businessId}/branches/{branchId}/projects', [CreativeProjectController::class, 'list']);
+        $ws->post('/businesses/{businessId}/branches/{branchId}/projects', [CreativeProjectController::class, 'create']);
+        $ws->patch('/businesses/{businessId}/projects/{projectId}/stage', [CreativeProjectController::class, 'updateStage']);
+        $ws->post('/businesses/{businessId}/branches/{branchId}/projects/{projectId}/logs', [CreativeProjectController::class, 'addLog']);
+        $ws->patch('/businesses/{businessId}/projects/{projectId}/logs/{logId}/toggle', [CreativeProjectController::class, 'toggleDeliverable']);
+        $ws->post('/businesses/{businessId}/branches/{branchId}/projects/{projectId}/bill', [CreativeProjectController::class, 'billProject']);
+        $ws->patch('/businesses/{businessId}/projects/{projectId}/delivery-url', [CreativeProjectController::class, 'setDeliveryUrl']);
     })->add(SubscriptionGuardMiddleware::class)->add(JwtAuthMiddleware::class);
 
     $api->get('/public/branding', [BrandingController::class, 'resolvePublicBranding']);
