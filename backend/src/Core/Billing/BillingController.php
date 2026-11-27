@@ -48,7 +48,7 @@ final class BillingController {
         $planSlug = trim((string) ($body['plan_slug'] ?? ''));
         $cycle = ($body['billing_cycle'] ?? 'monthly') === 'yearly' ? 'yearly' : 'monthly';
         $gatewayName = strtolower(trim((string) ($body['gateway'] ?? 'paystack')));
-        $callbackUrl = trim((string) ($body['callback_url'] ?? 'http://localhost:5173/billing/callback'));
+        $callbackUrl = trim((string) ($body['callback_url'] ?? 'http://localhost:5173/billing/callback, https://fast-business-os-app.vercel.app'));
 
         if (!in_array($gatewayName, ['paystack', 'flutterwave'], true)) {
             return JsonResponder::error($response, 'Invalid payment gateway. Choose paystack or flutterwave.', 'INVALID_GATEWAY', 422);
