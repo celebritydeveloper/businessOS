@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://businessos-fzmp.onrender.com/api/v1';
 const TOKEN_STORAGE_KEY = 'bos_access_token';
 let inMemoryAccessToken: string | null = typeof localStorage !== 'undefined' ? localStorage.getItem(TOKEN_STORAGE_KEY) : null;
 let refreshPromise: Promise<string | null> | null = null;
