@@ -45,20 +45,31 @@ use Slim\Routing\RouteCollectorProxy;
 $dotenv = Dotenv::createImmutable(__DIR__ . '/..');
 $dotenv->safeLoad();
 
+
+$allowedOrigins = array_filter(array_map('trim', explode(',', (string) ($_ENV['CORS_ALLOWED_ORIGINS'] ?? getenv('CORS_ALLOWED_ORIGINS') ?: 'http://localhost:5173,http://127.0.0.1:5173'))));
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if ($origin !== '' && in_array($origin, $allowedOrigins, true)) {
+    header("Access-Control-Allow-Origin: {$origin}");
+    header('Access-Control-Allow-Credentials: true');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Device-ID, X-Device-Name, X-Request-Nonce, X-Timestamp');
+    header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
+}
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
+
 $containerFactory = require __DIR__ . '/../config/container.php';
 $container = $containerFactory();
 
 AppFactory::setContainer($container);
 $app = AppFactory::create();
-
 $app->addBodyParsingMiddleware();
 $app->addRoutingMiddleware();
 $app->add(SecurityHeadersMiddleware::class);
 
 $debug = ($_ENV['APP_DEBUG'] ?? 'false') === 'true';
-
 $errorMiddleware = $app->addErrorMiddleware($debug, true, true);
-
 $errorMiddleware->setDefaultErrorHandler(function (Request $request, Throwable $e, bool $displayErrorDetails): Response {
     error_log('[API Error] ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
     $msg = $displayErrorDetails ? $e->getMessage() : 'Internal server error.';
@@ -71,14 +82,12 @@ $app->group('/api/v1', function (RouteCollectorProxy $api): void {
         return JsonResponder::success($res, ['status' => 'ok']);
     });
     $api->get('/plans', [BillingController::class, 'listPlans']);
-
     $api->post('/auth/register', [AuthController::class, 'register']);
     $api->post('/auth/verify-email', [AuthController::class, 'verifyEmail']);
     $api->post('/auth/resend-verification', [AuthController::class, 'resendVerification']);
     $api->post('/auth/login', [AuthController::class, 'login']);
     $api->post('/auth/refresh', [AuthController::class, 'refresh']);
     $api->post('/auth/accept-invite', [StaffController::class, 'acceptInvite']);
-
     $api->post('/billing/webhook/{gateway}', [BillingController::class, 'handleWebhook']);
 
     $api->group('', function (RouteCollectorProxy $auth): void {
@@ -128,7 +137,6 @@ $app->group('/api/v1', function (RouteCollectorProxy $api): void {
         $ws->post('/businesses/{businessId}/customers', [CustomerController::class, 'create']);
         $ws->patch('/businesses/{businessId}/customers/{customerId}', [CustomerController::class, 'update']);
         $ws->post('/businesses/{businessId}/customers/{customerId}/payments', [CustomerController::class, 'recordPayment']);
-
         $ws->get('/businesses/{businessId}/suppliers', [SupplierController::class, 'list']);
         $ws->post('/businesses/{businessId}/suppliers', [SupplierController::class, 'create']);
         $ws->patch('/businesses/{businessId}/suppliers/{supplierId}', [SupplierController::class, 'update']);

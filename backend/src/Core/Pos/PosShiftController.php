@@ -102,13 +102,13 @@ final class PosShiftController {
         return $this->issueSwitchSession($request, $response, $targetUser, $accountId, $businessId, $branchId, 'pos.pin_reset_on_terminal', []);
     }
 
-    private function issueSwitchSession(Request $request, Response $response, array $user, string $accountId, string $businessId, string $branchId, string $action, array $meta): Response
-    {
+    private function issueSwitchSession(Request $request, Response $response, array $user, string $accountId, string $businessId, string $branchId, string $action, array $meta): Response {
         $tokens = $this->authService->issueSession($user, $request->getHeaderLine('X-Device-ID') ?: 'pos-terminal', 'POS Terminal', $request->getServerParams()['REMOTE_ADDR'] ?? '0.0.0.0', $request->getHeaderLine('User-Agent') ?: 'POS Browser');
         $this->audit->log($accountId, $action, $user['id'], $businessId, $branchId, 'user', $user['id'], null, $meta);
 
-        $isHttps = ($request->getUri()->getScheme() === 'https');
-        $cookie = sprintf('bos_refresh=%s; Path=/api/v1/auth; HttpOnly; SameSite=Lax; Max-Age=%d%s', $tokens['refresh_token'], 60 * 60 * 24 * 30, $isHttps ? '; Secure' : '');
+        $isProd = (($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'local') !== 'local');
+        $flags = $isProd ? '; Secure; SameSite=None' : '; SameSite=Lax';
+        $cookie = "bos_refresh={$tokens['refresh_token']}; Path=/; HttpOnly; Max-Age=2592000{$flags}";
 
         return JsonResponder::success($response->withAddedHeader('Set-Cookie', $cookie), ['access_token' => $tokens['access_token'], 'cashier_name' => $user['full_name']]);
     }
