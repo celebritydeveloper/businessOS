@@ -70,7 +70,10 @@ export function EditSupplierModal({ supplier, businessId, onClose, onSaved }: Ed
             <Input label="Contact Person" value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} />
             <Input label="Phone Number" value={phone} onChange={(e) => setPhone(e.target.value)} />
           </div>
-          <Input label="Bank Account Details" value={bankDetails} onChange={(e) => setBankDetails(e.target.value)} />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Email (Optional)" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Input label="Bank Details" value={bankDetails} onChange={(e) => setBankDetails(e.target.value)} />
+          </div>
           <Input label="Address" value={address} onChange={(e) => setAddress(e.target.value)} />
           <Input label="Notes (Optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
 
