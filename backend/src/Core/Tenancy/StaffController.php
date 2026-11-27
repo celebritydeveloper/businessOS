@@ -130,7 +130,7 @@ final class StaffController {
         $phone = trim((string) ($body['phone'] ?? ''));
         $branchId = trim((string) ($body['branch_id'] ?? ''));
         $roleId = trim((string) ($body['role_id'] ?? ''));
-        $appOrigin = rtrim(trim((string) ($body['app_origin'] ?? 'http://localhost:5173')), '/');
+        $appOrigin = rtrim(trim((string) ($body['app_origin'] ?? 'http://localhost:5173, https://fast-business-os-app.vercel.app')), '/');
 
         if ($fullName === '' || $email === '' || $branchId === '' || $roleId === '') {
             return JsonResponder::error($response, 'Full name, email, branch, and role are required.', 'VALIDATION_ERROR', 422);

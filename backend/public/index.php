@@ -5,7 +5,7 @@ declare(strict_types=1);
 require __DIR__ . '/../vendor/autoload.php';
 
 $origin = $_SERVER['HTTP_ORIGIN'] ?? 'http://localhost:5173';
-if (in_array($origin, ['http://localhost:5173', 'http://127.0.0.1:5173'], true)) {
+if (in_array($origin, ['http://localhost:5173', 'http://127.0.0.1:5173', 'https://fast-business-os-app.vercel.app'], true)) {
     header("Access-Control-Allow-Origin: {$origin}");
     header('Access-Control-Allow-Credentials: true');
     header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Device-ID, X-Device-Name, X-Request-Nonce, X-Timestamp');
@@ -46,7 +46,7 @@ $dotenv = Dotenv::createImmutable(__DIR__ . '/..');
 $dotenv->safeLoad();
 
 
-$allowedOrigins = array_filter(array_map('trim', explode(',', (string) ($_ENV['CORS_ALLOWED_ORIGINS'] ?? getenv('CORS_ALLOWED_ORIGINS') ?: 'http://localhost:5173,http://127.0.0.1:5173'))));
+$allowedOrigins = array_filter(array_map('trim', explode(',', (string) ($_ENV['CORS_ALLOWED_ORIGINS'] ?? getenv('CORS_ALLOWED_ORIGINS') ?: 'http://localhost:5173, https://fast-business-os-app.vercel.app, http://127.0.0.1:5173'))));
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 if ($origin !== '' && in_array($origin, $allowedOrigins, true)) {
     header("Access-Control-Allow-Origin: {$origin}");
