@@ -136,8 +136,7 @@ final class AgricultureController
         return JsonResponder::success($response, ['cycle_id' => $cycleId], 201);
     }
 
-    public function recordCycleLog(Request $request, Response $response, array $args): Response
-    {
+    public function recordCycleLog(Request $request, Response $response, array $args): Response {
         $accountId = (string) $request->getAttribute('auth_account_id');
         $userId = (string) $request->getAttribute('auth_user_id');
         $isOwner = (bool) $request->getAttribute('auth_is_owner');

@@ -23,6 +23,9 @@ import { WorkspaceLayout } from './shared/layouts/WorkspaceLayout';
 import { ToastProvider } from './shared/ui/ToastProvider';
 import { CustomersPage } from './pages/contacts/CustomersPage';
 import { SuppliersPage } from './pages/contacts/SuppliersPage';
+import { ProjectsPage } from './pages/creative/ProjectsPage';
+import { ClientProjectTrackerPage } from './pages/creative/ClientProjectTrackerPage';
+import { LandingPage } from './pages/public/LandingPage';
 
 function OnboardingRouteGuard() {
   const { me } = useAuth();
@@ -55,6 +58,7 @@ function AppRoutes() {
 
   return (
     <Routes>
+      <Route path="/" element={<LandingPage />} />
       <Route path="/auth/register" element={me ? <Navigate to={hasBusiness ? '/dashboard' : '/onboarding'} replace /> : <RegisterPage />} />
       <Route path="/auth/verify-email" element={<VerifyEmailPage />} />
       <Route path="/auth/login" element={me ? <Navigate to={hasBusiness ? '/dashboard' : '/onboarding'} replace /> : <LoginPage />} />
@@ -64,6 +68,7 @@ function AppRoutes() {
 
       <Route path="/billing" element={me ? <PlanCheckoutPage /> : <Navigate to="/auth/login" replace />} />
       <Route path="/billing/callback" element={<BillingCallbackPage />} />
+      <Route path="/track/:token" element={<ClientProjectTrackerPage />} />
 
       <Route
         path="/dashboard"
@@ -79,6 +84,7 @@ function AppRoutes() {
         <Route path="audit" element={<ActivityLogsPage />} />
         <Route path="accounting" element={<AccountingPage />} />
         <Route path="farm-cycles" element={<FarmCyclesPage />} />
+        <Route path="projects" element={<ProjectsPage />} />
         <Route path="customers" element={<CustomersPage />} />
         <Route path="suppliers" element={<SuppliersPage />} />
         <Route path="billing" element={<BillingManagementPage />} />

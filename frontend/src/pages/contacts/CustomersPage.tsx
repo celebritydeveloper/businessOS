@@ -3,7 +3,6 @@ import { Banknote, Pencil, Plus, Search, Users } from 'lucide-react';
 import { apiFetch } from '../../core/api/httpClient';
 import { useAuth } from '../../core/auth/AuthContext';
 import { Button } from '../../shared/ui/Button';
-import { Input } from '../../shared/ui/Input';
 import { toast } from '../../shared/ui/ToastProvider';
 import type { CustomerItem } from './Contacts.types';
 import { CustomerRepaymentModal } from './CustomerRepaymentModal';
@@ -16,6 +15,7 @@ export function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
   const [creditLimit, setCreditLimit] = useState('');
   const [saving, setSaving] = useState(false);
@@ -47,6 +47,7 @@ export function CustomersPage() {
       body: JSON.stringify({
         full_name: fullName.trim(),
         phone: phone.trim(),
+        email: email.trim(),
         address: address.trim(),
         credit_limit: parseFloat(creditLimit) || 0,
       }),
@@ -61,6 +62,7 @@ export function CustomersPage() {
     toast.success(`Customer "${fullName}" added.`, 'Saved');
     setFullName('');
     setPhone('');
+    setEmail('');
     setAddress('');
     setCreditLimit('');
     void loadCustomers();
@@ -114,7 +116,9 @@ export function CustomersPage() {
                       <tr key={c.id} className="hover:bg-slate-50/60">
                         <td className="py-3 px-4">
                           <p className="font-bold text-slate-900">{c.full_name}</p>
-                          <p className="text-[11px] text-slate-500">{c.phone || 'No phone'}</p>
+                          <p className="text-[11px] text-slate-500">
+                            {c.phone || 'No phone'}{c.email ? ` • ${c.email}` : ''}
+                          </p>
                         </td>
                         <td className="py-3 px-4 text-right font-mono text-slate-700">
                           ₦{Number(c.total_spent || 0).toLocaleString('en-NG')}
@@ -148,10 +152,26 @@ export function CustomersPage() {
             <Plus className="w-4 h-4 text-brand-600" /> Add New Customer
           </h2>
           <form onSubmit={handleCreate} className="space-y-3">
-            <Input label="Full Name / Company" placeholder="e.g., Mama Chinedu Stores" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-            <Input label="Phone Number" placeholder="0803..." value={phone} onChange={(e) => setPhone(e.target.value)} />
-            <Input label="Address (Optional)" placeholder="Yenagoa / Biogbolo" value={address} onChange={(e) => setAddress(e.target.value)} />
-            <Input label="Credit Limit (₦)" type="number" step="0.01" placeholder="50000" value={creditLimit} onChange={(e) => setCreditLimit(e.target.value)} />
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold text-slate-700">Full Name / Company</label>
+              <input type="text" placeholder="e.g., Mama Chinedu Stores" value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm" required />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold text-slate-700">Phone Number</label>
+              <input type="text" placeholder="0803..." value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold text-slate-700">Email (For Invoices &amp; Project Updates)</label>
+              <input type="email" placeholder="client@company.com" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold text-slate-700">Address (Optional)</label>
+              <input type="text" placeholder="Biogbolo / Yenagoa" value={address} onChange={(e) => setAddress(e.target.value)} className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold text-slate-700">Credit Limit (₦)</label>
+              <input type="number" step="0.01" placeholder="50000" value={creditLimit} onChange={(e) => setCreditLimit(e.target.value)} className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm" />
+            </div>
             <Button type="submit" className="w-full" isLoading={saving}>Save Customer</Button>
           </form>
         </div>
